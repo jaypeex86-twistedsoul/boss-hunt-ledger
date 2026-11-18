@@ -66,7 +66,7 @@
         <div id="section-tally" class="space-y-8">
             
             <!-- Boss Hunt Recorder Form Card -->
-            <div class="bg-cardRef bg-cardBg border border-borderCol rounded-xl p-6 shadow-xl">
+            <div class="bg-cardBg border border-borderCol rounded-xl p-6 shadow-xl">
                 <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center gap-2">
                     <i class="fa-solid fa-crosshairs"></i> Record New Boss Hunt Encounter
                 </h2>
@@ -300,9 +300,6 @@
             renderTallyCheckboxes();
             renderMasterlist();
             renderHistory();
-            if(document.getElementById('bossModal').classList.contains('flex') === false) {
-                // Keep boss manager updated if open
-            }
         }
 
         // --- TAB SWITCHING ---
@@ -542,7 +539,6 @@
                 };
             });
 
-            // Also track dx claimed counts from persistent storage or attach to member objects
             if (!db.dxClaimedRecords) db.dxClaimedRecords = {};
 
             db.members.forEach(m => {
@@ -552,7 +548,7 @@
             db.hunts.forEach(hunt => {
                 hunt.attendees.forEach(attendee => {
                     if (stats[attendee]) {
-                        stats[attendee].points += 1; // 1 point per hunt attended
+                        stats[attendee].points += 1;
                         stats[attendee].attendedHunts += 1;
                         stats[attendee].lastAttended = hunt.number;
                     }
@@ -563,7 +559,7 @@
             db.members.forEach(m => {
                 const claimedCount = stats[m].dxClaimed || 0;
                 stats[m].points -= (claimedCount * 70);
-                if (stats[m].points < 0) stats[m].points = 0; // Prevent negative points visually
+                if (stats[m].points < 0) stats[m].points = 0;
             });
 
             return Object.values(stats);
@@ -574,7 +570,6 @@
             tbody.innerHTML = '';
 
             const stats = getMemberStats();
-            // Sort by Total Points descending, then Attended Hunts descending, then Name ascending
             stats.sort((a, b) => {
                 if (b.points !== a.points) return b.points - a.points;
                 if (b.attendedHunts !== a.attendedHunts) return b.attendedHunts - a.attendedHunts;
@@ -590,10 +585,6 @@
 
             stats.forEach((member, index) => {
                 const percentage = totalHuntsCount > 0 ? ((member.attendedHunts / totalHuntsCount) * 100).toFixed(1) : '0.0';
-                
-                // Check if eligible for DX Claim (>= 70 actual points or before deduction? User prompt: "required points to be able to claim DX... once clicked it automatically subtracts 70 points")
-                // Let's check raw points before DX deduction for eligibility: raw points = attendedHunts * 1? Wait, if points get subtracted, let's check current accumulated points or total attended points. 
-                // Usually, if you have 70 points available, you can claim. Let's check `(member.attendedHunts - (member.dxClaimed * 70)) >= 70` or simply `member.points >= 70`? Wait! If 1 hunt = 1 point, getting 70 points means attending 70 hunts. If points subtract 70, then points drop. So eligibility should be based on accumulated total points (`member.attendedHunts` since 1 hunt = 1 point, OR current `member.points >= 70`). Let's use current `member.points >= 70`.
                 const canClaimDX = member.points >= 70;
 
                 const tr = document.createElement('tr');
@@ -668,14 +659,12 @@
             }
 
             if (originalName === "") {
-                // Adding new
                 if (db.members.includes(newName)) {
                     alert('Guild member already exists!');
                     return;
                 }
                 db.members.push(newName);
             } else {
-                // Editing existing
                 if (originalName !== newName && db.members.includes(newName)) {
                     alert('Another member with this name already exists!');
                     return;
@@ -684,7 +673,6 @@
                 if (idx !== -1) {
                     db.members[idx] = newName;
                 }
-                // Update past hunts attendee records as well
                 db.hunts.forEach(h => {
                     const aIdx = h.attendees.indexOf(originalName);
                     if (aIdx !== -1) {
@@ -694,7 +682,6 @@
                         if (l.looter === originalName) l.looter = newName;
                     });
                 });
-                // Update dxClaimedRecords key
                 if (db.dxClaimedRecords && db.dxClaimedRecords[originalName] !== undefined) {
                     db.dxClaimedRecords[newName] = db.dxClaimedRecords[originalName];
                     delete db.dxClaimedRecords[originalName];
@@ -731,7 +718,6 @@
                 const card = document.createElement('div');
                 card.className = "bg-darkBg/80 border border-borderCol rounded-xl p-5 shadow-md space-y-4";
                 
-                // Loot list HTML
                 let lootsHTML = '<div class="text-xs text-slate-400 italic">No loots recorded for this hunt.</div>';
                 if (hunt.loots && hunt.loots.length > 0) {
                     lootsHTML = '<div class="space-y-2">';
