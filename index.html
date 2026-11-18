@@ -1,432 +1,159 @@
 <!DOCTYPE html>
-<html lang="en" class="dark">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Guild Boss Hunt Attendance & Loot Tracker</title>
+    <title>Vanguard Raid Ledger - Boss Hunt & Loot Tracker</title>
+    <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Cinzel:wght@600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script>
         tailwind.config = {
-            darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Cinzel', 'serif'],
-                    },
                     colors: {
-                        obsidian: {
-                            950: '#090b10',
-                            900: '#0f131a',
-                            800: '#161b26',
-                            700: '#1f2636',
-                            600: '#2d374d',
-                        },
-                        gold: {
-                            400: '#fbbf24',
-                            500: '#f59e0b',
-                            600: '#d97706',
-                        }
+                        darkBg: '#0f172a',
+                        cardBg: '#1e293b',
+                        accentGold: '#f59e0b',
+                        accentHover: '#d97706',
+                        borderCol: '#334155'
                     }
                 }
             }
         }
     </script>
-    <style>
-        /* Custom Scrollbar for Dark RPG Feel */
-        ::-webkit-scrollbar {
-            width: 8px;
-            height: 8px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #0f131a;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #2d374d;
-            border-radius: 4px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #f59e0b;
-        }
-
-        /* Custom Checkbox Styling */
-        .rpg-checkbox {
-            appearance: none;
-            background-color: #090b10;
-            border: 2px solid #2d374d;
-            border-radius: 6px;
-            width: 22px;
-            height: 22px;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            transition: all 0.15s ease;
-        }
-        .rpg-checkbox:checked {
-            background-color: #f59e0b;
-            border-color: #fbbf24;
-        }
-        .rpg-checkbox:checked::after {
-            content: '\f00c';
-            font-family: 'Font Awesome 6 Free';
-            font-weight: 900;
-            color: #090b10;
-            font-size: 13px;
-        }
-        .rpg-checkbox:hover {
-            border-color: #f59e0b;
-        }
-
-        .glass-panel {
-            background: rgba(22, 27, 38, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(45, 55, 77, 0.7);
-        }
-    </style>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
-<body class="bg-obsidian-950 text-slate-200 min-h-screen flex flex-col font-sans selection:bg-gold-500 selection:text-obsidian-950">
+<body class="bg-darkBg text-slate-100 min-h-screen font-sans antialiased selection:bg-amber-500 selection:text-black">
 
-    <!-- Toast Notification Container -->
-    <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2 pointer-events-none"></div>
-
-    <!-- Custom Confirmation Modal (Replaces window.confirm) -->
-    <div id="confirm-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-        <div class="bg-obsidian-800 border border-obsidian-600 rounded-xl max-w-md w-full p-6 shadow-2xl transform transition-all">
-            <div class="flex items-center gap-3 text-amber-400 mb-3">
-                <i class="fa-solid fa-triangle-exclamation text-2xl"></i>
-                <h3 id="confirm-title" class="text-lg font-bold text-white">Confirm Action</h3>
+    <div class="max-w-7xl mx-auto px-4 py-8">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8 border-b border-borderCol pb-6 gap-4">
+            <div>
+                <h1 class="text-3xl font-extrabold tracking-wider text-amber-400 flex items-center gap-3">
+                    <i class="fa-solid fa-shield-halved"></i> VANGUARD RAID LEDGER
+                </h1>
+                <p class="text-slate-400 text-sm mt-1">Guild Boss Hunt Attendance & Loot Management System</p>
             </div>
-            <p id="confirm-message" class="text-slate-300 text-sm mb-6 leading-relaxed">Are you sure you want to proceed?</p>
-            <div class="flex justify-end gap-3">
-                <button id="confirm-cancel-btn" class="px-4 py-2 rounded-lg bg-obsidian-700 hover:bg-obsidian-600 text-slate-200 text-sm font-medium transition">Cancel</button>
-                <button id="confirm-ok-btn" class="px-4 py-2 rounded-lg bg-red-600 hover:bg-red-500 text-white text-sm font-semibold shadow-lg shadow-red-600/20 transition">Confirm</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Manual Points Adjustment Modal -->
-    <div id="points-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4">
-        <div class="bg-obsidian-800 border border-obsidian-600 rounded-xl max-w-sm w-full p-6 shadow-2xl">
-            <h3 class="text-lg font-bold text-white mb-1 flex items-center gap-2">
-                <i class="fa-solid fa-sliders text-gold-400"></i> Adjust Bonus/Penalty Points
-            </h3>
-            <p id="points-modal-member" class="text-xs text-slate-400 mb-4">Member Name</p>
-            <div class="mb-4">
-                <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-2">Manual Adjustment (+/-)</label>
-                <input type="number" id="points-adjustment-input" class="w-full bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2.5 text-white focus:outline-none focus:border-gold-500" placeholder="e.g. 1 or -1">
-                <p class="text-[11px] text-slate-400 mt-1.5">Total Points = Hunt Attendance + Manual Adjustment - DX Claims (70 pts each).</p>
-            </div>
-            <div class="flex justify-end gap-3">
-                <button onclick="closePointsModal()" class="px-4 py-2 rounded-lg bg-obsidian-700 hover:bg-obsidian-600 text-slate-200 text-sm font-medium">Cancel</button>
-                <button onclick="savePointsAdjustment()" class="px-4 py-2 rounded-lg bg-gold-500 hover:bg-gold-400 text-obsidian-950 text-sm font-bold">Save Points</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Edit Past Hunt Modal -->
-    <div id="edit-hunt-modal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/80 backdrop-blur-sm p-4 overflow-y-auto">
-        <div class="bg-obsidian-800 border border-obsidian-600 rounded-2xl max-w-3xl w-full p-6 shadow-2xl my-8 max-h-[90vh] flex flex-col">
-            <div class="flex items-center justify-between border-b border-obsidian-700 pb-4 mb-4">
-                <div>
-                    <span class="text-xs font-bold uppercase tracking-wider text-gold-400">Retroactive Record Editor</span>
-                    <h3 id="edit-hunt-title" class="text-xl font-bold text-white">Edit Boss Hunt #120</h3>
-                </div>
-                <button onclick="closeEditHuntModal()" class="w-9 h-9 rounded-lg bg-obsidian-700 hover:bg-obsidian-600 text-slate-300 flex items-center justify-center">
-                    <i class="fa-solid fa-xmark"></i>
+            <div class="flex flex-wrap items-center gap-3">
+                <button onclick="openBossManager()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-md">
+                    <i class="fa-solid fa-dragon"></i> Manage Bosses
                 </button>
-            </div>
-
-            <div class="overflow-y-auto pr-2 space-y-6 flex-1">
-                <!-- Hunt Details -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Hunt Number (#)</label>
-                        <input type="number" id="edit-hunt-number" class="w-full bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-500">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">Boss Name / Notes</label>
-                        <input type="text" id="edit-hunt-boss" class="w-full bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-white focus:outline-none focus:border-gold-500">
-                    </div>
-                </div>
-
-                <!-- Retroactive Attendance Tick List -->
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-slate-400">
-                            <i class="fa-solid fa-users text-gold-400 mr-1"></i> Participating Guild Members (<span id="edit-selected-count">0</span>)
-                        </label>
-                        <span class="text-xs text-slate-400">Tick/untick to recalculate leaderboard</span>
-                    </div>
-                    <div id="edit-hunt-members-grid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2 bg-obsidian-950 p-3 rounded-xl border border-obsidian-700 max-h-56 overflow-y-auto">
-                        <!-- Populated via JS -->
-                    </div>
-                </div>
-
-                <!-- Retroactive Loot Editor -->
-                <div>
-                    <div class="flex items-center justify-between mb-2">
-                        <label class="text-xs font-semibold uppercase tracking-wider text-purple-400">
-                            <i class="fa-solid fa-gem mr-1"></i> Boss Loot Drops & Guild Bank Status
-                        </label>
-                    </div>
-                    
-                    <!-- Add Loot inside Edit Modal -->
-                    <div class="grid grid-cols-1 sm:grid-cols-12 gap-2 mb-3 bg-obsidian-900 p-3 rounded-xl border border-obsidian-700">
-                        <input type="text" id="edit-new-loot-item" placeholder="Item Name (e.g. Dragon Scale)" class="sm:col-span-5 bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400">
-                        <input type="number" id="edit-new-loot-qty" value="1" min="1" class="sm:col-span-2 bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400">
-                        <select id="edit-new-loot-looter" class="sm:col-span-3 bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400">
-                            <!-- Populated via JS -->
-                        </select>
-                        <button type="button" onclick="addLootInEditModal()" class="sm:col-span-2 bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg px-3 py-2 text-sm transition">
-                            <i class="fa-solid fa-plus"></i> Add
-                        </button>
-                    </div>
-
-                    <div id="edit-hunt-loot-list" class="space-y-2">
-                        <!-- Populated via JS -->
-                    </div>
-                </div>
-            </div>
-
-            <div class="flex justify-end gap-3 border-t border-obsidian-700 pt-4 mt-4">
-                <button onclick="closeEditHuntModal()" class="px-5 py-2.5 rounded-xl bg-obsidian-700 hover:bg-obsidian-600 text-slate-200 text-sm font-medium transition">Cancel</button>
-                <button onclick="saveEditedHunt()" class="px-5 py-2.5 rounded-xl bg-gold-500 hover:bg-gold-400 text-obsidian-950 text-sm font-bold shadow-lg shadow-gold-500/20 transition">
-                    <i class="fa-solid fa-floppy-disk mr-1.5"></i> Save Changes & Recalculate
+                <button onclick="exportJSON()" class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-md">
+                    <i class="fa-solid fa-download"></i> Export JSON
                 </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Top Navigation Header -->
-    <header class="sticky top-0 z-40 glass-panel border-b border-obsidian-700">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-wrap items-center justify-between gap-4">
-            <!-- Brand -->
-            <div class="flex items-center gap-3">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-gold-400 to-amber-600 flex items-center justify-center text-obsidian-950 shadow-lg shadow-gold-500/20">
-                    <i class="fa-solid fa-dragon text-xl"></i>
-                </div>
-                <div>
-                    <h1 class="font-display font-bold text-lg sm:text-xl text-white tracking-wide leading-tight">
-                        VANGUARD <span class="text-gold-400">RAID LEDGER</span>
-                    </h1>
-                    <p class="text-xs text-slate-400">Guild Boss Hunt Attendance & Central Loot Vault</p>
-                </div>
-            </div>
-
-            <!-- Navigation Tabs -->
-            <nav class="flex items-center bg-obsidian-950 p-1 rounded-xl border border-obsidian-700">
-                <button id="tab-btn-tally" onclick="switchTab('tally')" class="px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 bg-obsidian-800 text-gold-400 shadow">
-                    <i class="fa-solid fa-check-to-slot"></i>
-                    <span>Tally & Masterlist</span>
-                </button>
-                <button id="tab-btn-history" onclick="switchTab('history')" class="px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-white">
-                    <i class="fa-solid fa-scroll"></i>
-                    <span>Hunt History & Loot</span>
-                    <span id="history-badge" class="bg-obsidian-700 text-slate-200 text-xs px-2 py-0.5 rounded-full">0</span>
-                </button>
-            </nav>
-
-            <!-- Data Management Actions -->
-            <div class="flex items-center gap-2">
-                <button onclick="exportData()" title="Export Backup JSON" class="px-3 py-2 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 border border-obsidian-600 text-xs font-medium text-slate-200 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-download text-gold-400"></i>
-                    <span class="hidden md:inline">Export JSON</span>
-                </button>
-                <label title="Import Backup JSON" class="cursor-pointer px-3 py-2 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 border border-obsidian-600 text-xs font-medium text-slate-200 transition flex items-center gap-1.5">
-                    <i class="fa-solid fa-upload text-emerald-400"></i>
-                    <span class="hidden md:inline">Import</span>
-                    <input type="file" id="import-file-input" accept=".json" class="hidden" onchange="importData(event)">
+                <label class="bg-slate-700 hover:bg-slate-600 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-md cursor-pointer">
+                    <i class="fa-solid fa-upload"></i> Import JSON
+                    <input type="file" id="importFile" accept=".json" onchange="importJSON(event)" class="hidden">
                 </label>
-                <button id="clear-sample-btn" onclick="confirmClearSampleData()" class="px-3 py-2 rounded-lg bg-red-950/60 hover:bg-red-900/80 border border-red-800/60 text-xs font-medium text-red-300 transition flex items-center gap-1.5">
+                <button onclick="resetAllData()" class="bg-red-900/50 hover:bg-red-900 text-red-200 px-3 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1 border border-red-700" title="Reset all app data">
                     <i class="fa-solid fa-trash-can"></i>
-                    <span class="hidden sm:inline">Reset All</span>
                 </button>
             </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="flex border-b border-borderCol mb-6 gap-2">
+            <button onclick="switchTab('tally')" id="tab-tally" class="px-5 py-3 font-bold text-sm border-b-2 border-amber-500 text-amber-400 transition flex items-center gap-2">
+                <i class="fa-solid fa-list-check"></i> Active Hunt & Masterlist
+            </button>
+            <button onclick="switchTab('history')" id="tab-history" class="px-5 py-3 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-2">
+                <i class="fa-solid fa-clock-rotate-left"></i> Hunt History & Loot Records
+            </button>
         </div>
-    </header>
 
-    <!-- Main Content Area -->
-    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
-
-        <!-- VIEW 1: TALLY FORM & MASTERLIST -->
-        <div id="view-tally" class="space-y-8">
+        <!-- ================= TAB 1: TALLY & MASTERLIST ================= -->
+        <div id="section-tally" class="space-y-8">
             
-            <!-- Top Section: Current Boss Hunt Form -->
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <!-- Boss Hunt Recorder Form Card -->
+            <div class="bg-cardRef bg-cardBg border border-borderCol rounded-xl p-6 shadow-xl">
+                <h2 class="text-xl font-bold text-amber-400 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-crosshairs"></i> Record New Boss Hunt Encounter
+                </h2>
                 
-                <!-- Left Column (7 cols): Guild Roster & Attendance Checkboxes -->
-                <div class="lg:col-span-7 glass-panel rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col">
-                    <div class="flex flex-wrap items-center justify-between gap-3 border-b border-obsidian-700 pb-4 mb-4">
-                        <div>
-                            <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-users-viewfinder text-gold-400"></i>
-                                Guild Roster Attendance
-                            </h2>
-                            <p class="text-xs text-slate-400">Tick members present for this encounter</p>
-                        </div>
-                        <div class="flex items-center gap-2 bg-obsidian-950 px-3 py-1.5 rounded-xl border border-obsidian-700">
-                            <span class="text-xs text-slate-400">Present:</span>
-                            <span id="current-present-count" class="text-sm font-bold text-gold-400">0</span>
-                            <span class="text-xs text-slate-500">/</span>
-                            <span id="total-roster-count" class="text-sm font-semibold text-slate-300">0</span>
-                        </div>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                    <!-- Hunt Number -->
+                    <div>
+                        <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Attempt / Hunt Number</label>
+                        <input type="text" id="huntNumber" placeholder="e.g., Boss Hunt #120" class="w-full bg-darkBg border border-borderCol rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-amber-500 font-semibold">
                     </div>
-
-                    <!-- Add New Member Bar -->
-                    <form onsubmit="handleAddMember(event)" class="flex gap-2 mb-4">
-                        <div class="relative flex-1">
-                            <i class="fa-solid fa-user-plus absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-                            <input type="text" id="new-member-input" placeholder="Enter new guild member IGN..." class="w-full bg-obsidian-950 border border-obsidian-600 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500 transition">
-                        </div>
-                        <button type="submit" class="px-4 py-2.5 rounded-xl bg-obsidian-700 hover:bg-gold-500 hover:text-obsidian-950 text-white font-semibold text-sm transition flex items-center gap-2 shrink-0">
-                            <i class="fa-solid fa-plus"></i>
-                            <span>Add Member</span>
-                        </button>
-                    </form>
-
-                    <!-- Search & Quick Select Controls -->
-                    <div class="flex flex-wrap items-center justify-between gap-2 mb-3">
-                        <div class="relative flex-1 min-w-[180px]">
-                            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-xs"></i>
-                            <input type="text" id="roster-search-input" oninput="renderRoster()" placeholder="Filter members..." class="w-full bg-obsidian-950/70 border border-obsidian-700 rounded-lg pl-8 pr-3 py-1.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-gold-500">
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="selectAllMembers()" class="px-3 py-1.5 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 border border-obsidian-600 text-xs font-medium text-emerald-400 transition">
-                                <i class="fa-solid fa-check-double mr-1"></i> Select All
-                            </button>
-                            <button type="button" onclick="clearAllSelections()" class="px-3 py-1.5 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 border border-obsidian-600 text-xs font-medium text-slate-300 transition">
-                                <i class="fa-regular fa-square mr-1"></i> Clear
+                    <!-- Boss Name Dropdown -->
+                    <div>
+                        <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Boss Name</label>
+                        <div class="flex gap-2">
+                            <select id="bossSelect" class="w-full bg-darkBg border border-borderCol rounded-lg px-3 py-2.5 text-slate-100 focus:outline-none focus:border-amber-500 font-semibold">
+                                <!-- Populated dynamically -->
+                            </select>
+                            <button onclick="openBossManager()" class="bg-slate-700 hover:bg-slate-600 px-3 py-2.5 rounded-lg text-slate-200 transition" title="Add or manage bosses">
+                                <i class="fa-solid fa-plus"></i>
                             </button>
                         </div>
                     </div>
-
-                    <!-- Scrollable Roster Checkbox List -->
-                    <div id="roster-list-container" class="flex-1 space-y-2 max-h-[420px] overflow-y-auto pr-1">
-                        <!-- Dynamically rendered member rows -->
+                    <!-- Hunt Date/Time -->
+                    <div>
+                        <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Encounter Date</label>
+                        <input type="date" id="huntDate" class="w-full bg-darkBg border border-borderCol rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-amber-500">
                     </div>
                 </div>
 
-                <!-- Right Column (5 cols): Boss Hunt Metadata & Loot Logger -->
-                <div class="lg:col-span-5 flex flex-col gap-6">
-                    
-                    <!-- Hunt Attempt Details Card -->
-                    <div class="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl">
-                        <h2 class="text-lg font-bold text-white flex items-center gap-2 border-b border-obsidian-700 pb-3 mb-4">
-                            <i class="fa-solid fa-skull text-red-400"></i>
-                            Encounter Details
-                        </h2>
-
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label for="hunt-number-input" class="block text-xs font-semibold uppercase tracking-wider text-gold-400 mb-1.5">
-                                    Boss Hunt #
-                                </label>
-                                <div class="relative">
-                                    <span class="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 font-bold">#</span>
-                                    <input type="number" id="hunt-number-input" min="1" value="120" class="w-full bg-obsidian-950 border border-obsidian-600 rounded-xl pl-8 pr-4 py-2.5 text-lg font-bold text-white focus:outline-none focus:border-gold-500 transition">
-                                </div>
-                            </div>
-                            <div>
-                                <label for="boss-name-input" class="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                                    Boss Name / Notes
-                                </label>
-                                <input type="text" id="boss-name-input" placeholder="e.g. Ignis the Worldburner" class="w-full bg-obsidian-950 border border-obsidian-600 rounded-xl px-3.5 py-2.5 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500 transition">
-                            </div>
+                <!-- Roster Tally Checkboxes -->
+                <div class="mb-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-2">
+                        <div>
+                            <label class="block text-sm uppercase font-extrabold text-amber-300">Roster Attendance Check-in</label>
+                            <p class="text-xs text-slate-400">Tick the box beside members present for this specific boss hunt.</p>
+                        </div>
+                        <div class="flex items-center gap-3 w-full sm:w-auto">
+                            <input type="text" id="rosterSearch" placeholder="Filter roster..." oninput="renderTallyCheckboxes()" class="bg-darkBg border border-borderCol rounded-lg px-3 py-1.5 text-xs text-slate-200 focus:outline-none focus:border-amber-500">
+                            <button onclick="toggleAllAttendance(true)" class="text-xs text-amber-400 hover:underline">Select All</button>
+                            <span class="text-slate-600">|</span>
+                            <button onclick="toggleAllAttendance(false)" class="text-xs text-slate-400 hover:underline">Clear</button>
                         </div>
                     </div>
+                    <div id="tallyCheckboxes" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-60 overflow-y-auto p-3 bg-darkBg/60 border border-borderCol rounded-lg">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
 
-                    <!-- Separate Loot Logger Card -->
-                    <div class="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl flex-1 flex flex-col">
-                        <div class="flex items-center justify-between border-b border-obsidian-700 pb-3 mb-4">
-                            <div>
-                                <h2 class="text-lg font-bold text-white flex items-center gap-2">
-                                    <i class="fa-solid fa-gem text-purple-400"></i>
-                                    Boss Loot Drops
-                                </h2>
-                                <p class="text-[11px] text-slate-400">Logged separately for Guild Leader collection</p>
-                            </div>
-                            <span id="current-loot-badge" class="bg-purple-950 text-purple-300 border border-purple-700/50 text-xs font-bold px-2.5 py-1 rounded-lg">0 Items</span>
+                <!-- Loot Drop Logger Section -->
+                <div class="border-t border-borderCol pt-5 mb-6">
+                    <div class="flex justify-between items-center mb-3">
+                        <div>
+                            <h3 class="text-sm uppercase font-extrabold text-amber-300">Loot Drop Vault (Optional)</h3>
+                            <p class="text-xs text-slate-400">Record items dropped and who looted them for central guild storage.</p>
                         </div>
-
-                        <!-- Add Loot Item Form -->
-                        <div class="space-y-3 bg-obsidian-900/90 p-3.5 rounded-xl border border-obsidian-700 mb-4">
-                            <div class="grid grid-cols-12 gap-2">
-                                <div class="col-span-8">
-                                    <input type="text" id="loot-item-input" placeholder="Loot Item Name..." class="w-full bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-purple-400">
-                                </div>
-                                <div class="col-span-4">
-                                    <input type="number" id="loot-qty-input" value="1" min="1" title="Quantity" class="w-full bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-sm text-white text-center focus:outline-none focus:border-purple-400">
-                                </div>
-                            </div>
-
-                            <div class="grid grid-cols-12 gap-2 items-center">
-                                <div class="col-span-7">
-                                    <select id="loot-looter-select" class="w-full bg-obsidian-950 border border-obsidian-600 rounded-lg px-3 py-2 text-sm text-white focus:outline-none focus:border-purple-400">
-                                        <option value="">-- Select Looter --</option>
-                                    </select>
-                                </div>
-                                <div class="col-span-5">
-                                    <button type="button" onclick="addLootToCurrentHunt()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-semibold rounded-lg px-3 py-2 text-sm transition flex items-center justify-center gap-1.5">
-                                        <i class="fa-solid fa-plus"></i> Log Drop
-                                    </button>
-                                </div>
-                            </div>
-
-                            <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer pt-1">
-                                <input type="checkbox" id="loot-collected-checkbox" class="rpg-checkbox !w-4 !h-4">
-                                <span>Already turned over / collected by Guild Leader</span>
-                            </label>
-                        </div>
-
-                        <!-- Current Hunt Loot List -->
-                        <div id="current-loot-list" class="flex-1 space-y-2 max-h-44 overflow-y-auto mb-4">
-                            <div class="text-center py-6 text-slate-500 text-xs border border-dashed border-obsidian-700 rounded-xl">
-                                No loot drops added for this hunt yet.
-                            </div>
-                        </div>
-
-                        <!-- Submit Boss Hunt Button -->
-                        <button type="button" onclick="submitBossHunt()" class="w-full py-3.5 px-6 rounded-xl bg-gradient-to-r from-gold-500 to-amber-600 hover:from-gold-400 hover:to-amber-500 text-obsidian-950 font-extrabold text-base tracking-wide shadow-lg shadow-gold-500/25 transform active:scale-[0.99] transition flex items-center justify-center gap-2.5">
-                            <i class="fa-solid fa-stamp text-lg"></i>
-                            <span>SUBMIT BOSS HUNT #<span id="submit-btn-hunt-num">120</span></span>
+                        <button onclick="addLootRow()" class="bg-slate-700 hover:bg-slate-600 text-xs text-white px-3 py-1.5 rounded-lg transition flex items-center gap-1 font-semibold">
+                            <i class="fa-solid fa-plus"></i> Add Item
                         </button>
                     </div>
+                    <div id="lootRowsContainer" class="space-y-2">
+                        <!-- Dynamic Loot Rows -->
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <div class="flex justify-end">
+                    <button onclick="submitBossHunt()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-6 py-3 rounded-xl font-extrabold text-sm transition shadow-lg flex items-center gap-2">
+                        <i class="fa-solid fa-check-double"></i> Submit Hunt & Update Points
+                    </button>
                 </div>
             </div>
 
-            <!-- Bottom Section: Master Attendance Output Leaderboard -->
-            <div class="glass-panel rounded-2xl p-5 sm:p-6 shadow-xl">
-                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-obsidian-700 pb-4 mb-5">
+            <!-- Master Attendance & Leaderboard Section -->
+            <div class="bg-cardBg border border-borderCol rounded-xl p-6 shadow-xl">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
                     <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-xl font-bold text-white flex items-center gap-2">
-                                <i class="fa-solid fa-trophy text-gold-400"></i>
-                                Master Attendance Output
-                            </h2>
-                            <span id="total-hunts-recorded-pill" class="bg-obsidian-950 border border-obsidian-700 text-xs font-semibold text-slate-300 px-2.5 py-1 rounded-full">
-                                0 Hunts Recorded
-                            </span>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-0.5">Live cumulative attendance points calculated across all recorded boss hunts (70 pts required to claim DX)</p>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-ranking-star"></i> Master Attendance Leaderboard
+                        </h2>
+                        <p class="text-slate-400 text-sm">Cumulative points, attendance percentages, and DX claim tracker.</p>
                     </div>
-
-                    <div class="flex flex-wrap items-center gap-2">
-                        <!-- Sort Dropdown -->
-                        <select id="leaderboard-sort" onchange="renderLeaderboard()" class="bg-obsidian-950 border border-obsidian-600 rounded-xl px-3 py-2 text-xs font-medium text-slate-200 focus:outline-none focus:border-gold-500">
-                            <option value="points-desc">Sort: Highest Points</option>
-                            <option value="points-asc">Sort: Lowest Points</option>
-                            <option value="dx-desc">Sort: Most DX Claimed</option>
-                            <option value="name-asc">Sort: Name (A-Z)</option>
-                            <option value="recent-desc">Sort: Last Attended</option>
-                        </select>
-
-                        <!-- Copy Masterlist for Discord -->
-                        <button onclick="copyMasterlistToClipboard()" class="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold shadow-lg shadow-indigo-600/20 transition flex items-center gap-2">
-                            <i class="fa-brands fa-discord text-sm"></i>
-                            <span>Copy Masterlist</span>
+                    <div class="flex items-center gap-3 w-full md:w-auto">
+                        <button onclick="openAddMemberModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-md">
+                            <i class="fa-solid fa-user-plus"></i> Add Guild Member
+                        </button>
+                        <button onclick="copyMasterlistDiscord()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 shadow-md">
+                            <i class="fa-brands fa-discord"></i> Copy for Discord
                         </button>
                     </div>
                 </div>
@@ -435,1153 +162,766 @@
                 <div class="overflow-x-auto">
                     <table class="w-full text-left border-collapse">
                         <thead>
-                            <tr class="border-b border-obsidian-700 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-                                <th class="py-3 px-4 w-16">Rank</th>
-                                <th class="py-3 px-4">Guild Member</th>
-                                <th class="py-3 px-4 text-center">Total Points</th>
-                                <th class="py-3 px-4 text-center"># of DX Claimed</th>
-                                <th class="py-3 px-4">Attendance Rate</th>
-                                <th class="py-3 px-4 text-right">Last Hunt Attended</th>
+                            <tr class="border-b border-borderCol text-xs uppercase tracking-wider text-slate-400 bg-darkBg/50">
+                                <th class="p-3">Rank</th>
+                                <th class="p-3">Guild Member</th>
+                                <th class="p-3 text-center">Total Points</th>
+                                <th class="p-3 text-center">Attended Hunts</th>
+                                <th class="p-3 text-center">Attendance %</th>
+                                <th class="p-3 text-center"># of DX Claimed</th>
+                                <th class="p-3 text-right">Actions / DX Claim</th>
                             </tr>
                         </thead>
-                        <tbody id="leaderboard-tbody" class="divide-y divide-obsidian-800/70 text-sm">
-                            <!-- Dynamically populated -->
+                        <tbody id="masterlistTableBody" class="divide-y divide-borderCol text-sm">
+                            <!-- Populated dynamically -->
                         </tbody>
                     </table>
                 </div>
             </div>
-
         </div>
 
-        <!-- VIEW 2: BOSS HUNT HISTORY & LOOT DATABASE -->
-        <div id="view-history" class="hidden space-y-6">
+        <!-- ================= TAB 2: HUNT HISTORY & LOOT ================= -->
+        <div id="section-history" class="space-y-6 hidden">
+            <div class="bg-cardBg border border-borderCol rounded-xl p-6 shadow-xl">
+                <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
+                    <div>
+                        <h2 class="text-xl font-bold text-amber-400 flex items-center gap-2">
+                            <i class="fa-solid fa-scroll"></i> Boss Hunt History & Loot Records
+                        </h2>
+                        <p class="text-slate-400 text-sm">Review past encounters, manage guild loot collection status, or retroactively edit attendee points.</p>
+                    </div>
+                    <div class="w-full md:w-72">
+                        <input type="text" id="historySearch" placeholder="Search hunt # or boss..." oninput="renderHistory()" class="w-full bg-darkBg border border-borderCol rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500">
+                    </div>
+                </div>
+
+                <div id="historyContainer" class="space-y-4">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: ADD / EDIT GUILD MEMBER ================= -->
+    <div id="memberModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-borderCol rounded-xl max-w-md w-full p-6 shadow-2xl">
+            <h3 id="memberModalTitle" class="text-lg font-bold text-amber-400 mb-4">Add New Guild Member</h3>
+            <input type="hidden" id="editOriginalName">
+            <div class="mb-4">
+                <label class="block text-xs uppercase font-bold text-slate-400 mb-1">Member Name</label>
+                <input type="text" id="modalMemberName" placeholder="Character name..." class="w-full bg-darkBg border border-borderCol rounded-lg px-4 py-2.5 text-slate-100 focus:outline-none focus:border-amber-500 font-semibold">
+            </div>
+            <div class="flex justify-end gap-3">
+                <button onclick="closeMemberModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition">Cancel</button>
+                <button onclick="saveMember()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg text-sm font-extrabold transition">Save Member</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ================= MODAL: BOSS MANAGER ================= -->
+    <div id="bossModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-borderCol rounded-xl max-w-lg w-full p-6 shadow-2xl">
+            <h3 class="text-lg font-bold text-amber-400 mb-2">Manage Boss List</h3>
+            <p class="text-xs text-slate-400 mb-4">Add new bosses or remove existing ones from the dropdown.</p>
             
-            <!-- Summary Stats Banner -->
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                <div class="glass-panel rounded-2xl p-4 flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-gold-500/10 border border-gold-500/30 flex items-center justify-center text-gold-400 text-xl">
-                        <i class="fa-solid fa-swords"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-400 font-medium">Total Boss Hunts</p>
-                        <p id="stat-total-hunts" class="text-2xl font-extrabold text-white">0</p>
-                    </div>
-                </div>
-
-                <div class="glass-panel rounded-2xl p-4 flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 text-xl">
-                        <i class="fa-solid fa-treasure-chest"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-400 font-medium">Total Loot Drops Logged</p>
-                        <p id="stat-total-loots" class="text-2xl font-extrabold text-white">0</p>
-                    </div>
-                </div>
-
-                <div class="glass-panel rounded-2xl p-4 flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-center justify-center text-amber-400 text-xl">
-                        <i class="fa-solid fa-hand-holding-hand"></i>
-                    </div>
-                    <div>
-                        <p class="text-xs text-slate-400 font-medium">Pending Guild Leader Pickup</p>
-                        <p id="stat-pending-loots" class="text-2xl font-extrabold text-amber-400">0</p>
-                    </div>
-                </div>
+            <div class="flex gap-2 mb-4">
+                <input type="text" id="newBossInput" placeholder="New boss name..." class="w-full bg-darkBg border border-borderCol rounded-lg px-3 py-2 text-sm text-slate-100 focus:outline-none focus:border-amber-500">
+                <button onclick="addNewBoss()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-semibold transition whitespace-nowrap">Add Boss</button>
             </div>
 
-            <!-- Filter Bar for History -->
-            <div class="glass-panel rounded-2xl p-4 flex flex-wrap items-center justify-between gap-4">
-                <div class="relative flex-1 min-w-[240px]">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 text-sm"></i>
-                    <input type="text" id="history-search-input" oninput="renderHistory()" placeholder="Search by Hunt #, Boss Name, Participant, or Loot Item..." class="w-full bg-obsidian-950 border border-obsidian-600 rounded-xl pl-10 pr-4 py-2 text-sm text-white placeholder-slate-500 focus:outline-none focus:border-gold-500">
-                </div>
-                <div class="flex items-center gap-2">
-                    <label class="flex items-center gap-2 text-xs text-slate-300 cursor-pointer bg-obsidian-950 px-3 py-2 rounded-xl border border-obsidian-700">
-                        <input type="checkbox" id="filter-uncollected-only" onchange="renderHistory()" class="rpg-checkbox !w-4 !h-4">
-                        <span>Show Uncollected Loot Only</span>
-                    </label>
-                </div>
+            <div class="max-h-60 overflow-y-auto border border-borderCol rounded-lg p-3 bg-darkBg/50 mb-6 space-y-2" id="bossListContainer">
+                <!-- Boss list items populated dynamically -->
             </div>
 
-            <!-- Hunt History Cards List -->
-            <div id="history-list-container" class="space-y-4">
-                <!-- Dynamically populated -->
+            <div class="flex justify-end">
+                <button onclick="closeBossManager()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition">Close</button>
             </div>
         </div>
+    </div>
 
-    </main>
+    <!-- ================= MODAL: EDIT HUNT (RETROACTIVE) ================= -->
+    <div id="editHuntModal" class="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-cardBg border border-borderCol rounded-xl max-w-2xl w-full p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
+            <h3 class="text-lg font-bold text-amber-400 mb-2">Retroactively Edit Hunt Attendees</h3>
+            <p id="editHuntSubTitle" class="text-xs text-slate-400 mb-4"></p>
+            <input type="hidden" id="editingHuntId">
 
-    <!-- Hidden textarea for safe clipboard copying inside iframes -->
-    <textarea id="clipboard-helper" class="fixed -left-[9999px] top-0 opacity-0"></textarea>
+            <div class="mb-4">
+                <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 max-h-60 overflow-y-auto p-3 bg-darkBg/60 border border-borderCol rounded-lg" id="editHuntCheckboxes">
+                    <!-- Populated dynamically -->
+                </div>
+            </div>
 
+            <div class="flex justify-end gap-3">
+                <button onclick="closeEditHuntModal()" class="bg-slate-700 hover:bg-slate-600 text-slate-200 px-4 py-2 rounded-lg text-sm font-semibold transition">Cancel</button>
+                <button onclick="saveRetroactiveHunt()" class="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg text-sm font-extrabold transition">Save & Recalculate Points</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script -->
     <script>
-        // =========================================================================
-        // STATE MANAGEMENT & STORAGE SCHEMA
-        // =========================================================================
-        const STORAGE_KEY = 'vanguard_guild_boss_tracker_v2';
-
-        let appState = {
-            members: [], // { id: string, name: string, bonusPoints: number, dxClaimed: number }
-            hunts: [],   // { id: string, huntNumber: number, bossName: string, timestamp: string, participants: string[], loots: [...] }
-            nextHuntNumber: 120
+        // Initial Default Data State
+        let db = {
+            members: [
+                "TwistedSouL", "DarkKnight", "EnergyElf", "SoulMaster", 
+                "BladeKnight", "Yaksa", "Druka", "Nakayuda", "RuneKnight", "Clown"
+            ],
+            bosses: [
+                "Angul General", "Angul Shogun"
+            ],
+            hunts: [] // Array of { id, number, boss, date, attendees: [], loots: [] }
         };
 
-        // Ephemeral state for current active form
-        let currentSelection = new Set();
-        let currentLoots = [];
-        let activeTab = 'tally';
-
-        // Ephemeral state for modals
-        let editingHuntId = null;
-        let editingHuntParticipants = new Set();
-        let editingHuntLoots = [];
-        let adjustingMemberId = null;
-
-        // =========================================================================
-        // INITIALIZATION & SAMPLE DATA
-        // =========================================================================
-        function initApp() {
-            const savedData = localStorage.getItem(STORAGE_KEY);
-            if (savedData) {
+        // Load from localStorage on startup
+        function loadData() {
+            const saved = localStorage.getItem('vanguard_raid_ledger_db');
+            if (saved) {
                 try {
-                    const parsed = JSON.parse(savedData);
-                    appState = {
-                        members: Array.isArray(parsed.members) ? parsed.members.map(m => ({ ...m, dxClaimed: m.dxClaimed || 0 })) : [],
-                        hunts: Array.isArray(parsed.hunts) ? parsed.hunts : [],
-                        nextHuntNumber: typeof parsed.nextHuntNumber === 'number' ? parsed.nextHuntNumber : 1
-                    };
+                    db = JSON.parse(saved);
+                    // Ensure bosses array exists for older saved states
+                    if (!db.bosses) db.bosses = ["Angul General", "Angul Shogun"];
                 } catch (e) {
-                    console.error("Failed to parse saved state:", e);
-                    seedSampleData();
+                    console.error("Error loading local storage", e);
                 }
-            } else {
-                seedSampleData();
             }
-
-            // Sync Hunt Number input
-            document.getElementById('hunt-number-input').value = appState.nextHuntNumber;
-            document.getElementById('submit-btn-hunt-num').textContent = appState.nextHuntNumber;
-
-            document.getElementById('hunt-number-input').addEventListener('input', (e) => {
-                const val = e.target.value || '?';
-                document.getElementById('submit-btn-hunt-num').textContent = val;
-            });
-
-            renderAll();
+            // Set default date to today
+            document.getElementById('huntDate').valueAsDate = new Date();
+            refreshUI();
         }
 
-        function seedSampleData() {
-            const m1 = { id: 'mem_1', name: 'Kaelthas (GM)', bonusPoints: 20, dxClaimed: 1 };
-            const m2 = { id: 'mem_2', name: 'LyraShadow', bonusPoints: 0, dxClaimed: 0 };
-            const m3 = { id: 'mem_3', name: 'ThorgarIronfist', bonusPoints: 0, dxClaimed: 0 };
-            const m4 = { id: 'mem_4', name: 'Seraphina', bonusPoints: 10, dxClaimed: 0 };
-            const m5 = { id: 'mem_5', name: 'Vexxus', bonusPoints: 0, dxClaimed: 0 };
-            const m6 = { id: 'mem_6', name: 'Nyxia', bonusPoints: 0, dxClaimed: 0 };
-
-            appState.members = [m1, m2, m3, m4, m5, m6];
-
-            appState.hunts = [
-                {
-                    id: 'hunt_118',
-                    huntNumber: 118,
-                    bossName: 'Abyssal Leviathan',
-                    timestamp: new Date(Date.now() - 86400000 * 2).toISOString(),
-                    participants: ['mem_1', 'mem_2', 'mem_3', 'mem_4'],
-                    loots: [
-                        { id: 'loot_1', item: 'Leviathan Heartstone', qty: 1, looterId: 'mem_2', looterName: 'LyraShadow', collected: true },
-                        { id: 'loot_2', item: 'Tidal Essence Shard', qty: 3, looterId: 'mem_3', looterName: 'ThorgarIronfist', collected: true }
-                    ]
-                },
-                {
-                    id: 'hunt_119',
-                    huntNumber: 119,
-                    bossName: 'Ignis the Worldburner',
-                    timestamp: new Date(Date.now() - 3600000 * 6).toISOString(),
-                    participants: ['mem_1', 'mem_2', 'mem_4', 'mem_5', 'mem_6'],
-                    loots: [
-                        { id: 'loot_3', item: 'Molten Greatsword Blueprint', qty: 1, looterId: 'mem_5', looterName: 'Vexxus', collected: false },
-                        { id: 'loot_4', item: 'Draconic Scale', qty: 5, looterId: 'mem_1', looterName: 'Kaelthas (GM)', collected: true }
-                    ]
-                }
-            ];
-
-            appState.nextHuntNumber = 120;
-            saveState();
+        function saveData() {
+            localStorage.setItem('vanguard_raid_ledger_db', JSON.stringify(db));
+            refreshUI();
         }
 
-        function saveState() {
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
-        }
-
-        // =========================================================================
-        // POINT CALCULATION ENGINE (Single Source of Truth)
-        // =========================================================================
-        function calculateMemberStats() {
-            const sortedHunts = [...appState.hunts].sort((a, b) => a.huntNumber - b.huntNumber);
-            const totalHunts = sortedHunts.length;
-
-            return appState.members.map(member => {
-                let huntPoints = 0;
-                let lastHuntNum = null;
-
-                sortedHunts.forEach(hunt => {
-                    if (hunt.participants.includes(member.id)) {
-                        huntPoints += 1;
-                        lastHuntNum = hunt.huntNumber;
-                    }
-                });
-
-                const bonus = Number(member.bonusPoints) || 0;
-                const dxCount = Number(member.dxClaimed) || 0;
-                const dxDeduction = dxCount * 70;
-                
-                const totalPoints = Math.max(0, huntPoints + bonus - dxDeduction);
-                const percentage = totalHunts > 0 ? Math.round((huntPoints / totalHunts) * 100) : 0;
-
-                return {
-                    ...member,
-                    huntPoints,
-                    bonusPoints: bonus,
-                    dxClaimed: dxCount,
-                    dxDeduction,
-                    totalPoints,
-                    percentage,
-                    lastHuntNum
-                };
-            });
-        }
-
-        // =========================================================================
-        // RENDERING FUNCTIONS
-        // =========================================================================
-        function renderAll() {
-            renderRoster();
-            renderLooterDropdowns();
-            renderCurrentLoots();
-            renderLeaderboard();
+        function refreshUI() {
+            renderBossDropdown();
+            renderTallyCheckboxes();
+            renderMasterlist();
             renderHistory();
-            updateBadges();
-        }
-
-        function updateBadges() {
-            document.getElementById('history-badge').textContent = appState.hunts.length;
-            document.getElementById('total-hunts-recorded-pill').textContent = `${appState.hunts.length} Hunt${appState.hunts.length === 1 ? '' : 's'} Recorded`;
-        }
-
-        function renderRoster() {
-            const container = document.getElementById('roster-list-container');
-            const searchQuery = document.getElementById('roster-search-input').value.toLowerCase().trim();
-            const stats = calculateMemberStats();
-            const statsMap = new Map(stats.map(s => [s.id, s]));
-
-            const validIds = new Set(appState.members.map(m => m.id));
-            for (let id of currentSelection) {
-                if (!validIds.has(id)) currentSelection.delete(id);
-            }
-
-            document.getElementById('current-present-count').textContent = currentSelection.size;
-            document.getElementById('total-roster-count').textContent = appState.members.length;
-
-            const filteredMembers = appState.members.filter(m =>
-                m.name.toLowerCase().includes(searchQuery)
-            );
-
-            if (appState.members.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-10 text-slate-500 text-sm border border-dashed border-obsidian-700 rounded-xl">
-                        <i class="fa-solid fa-users-slash text-2xl mb-2 block text-slate-600"></i>
-                        No guild members in roster. Add members above to begin!
-                    </div>
-                `;
-                return;
-            }
-
-            if (filteredMembers.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-8 text-slate-500 text-xs">
-                        No guild members match "${escapeHtml(searchQuery)}".
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = filteredMembers.map(member => {
-                const isChecked = currentSelection.has(member.id);
-                const memberStat = statsMap.get(member.id);
-                const pts = memberStat ? memberStat.totalPoints : 0;
-                const dxCount = memberStat ? memberStat.dxClaimed : 0;
-
-                return `
-                    <div class="flex items-center justify-between p-3 rounded-xl border transition ${isChecked ? 'bg-gold-500/10 border-gold-500/50' : 'bg-obsidian-950/80 border-obsidian-800 hover:border-obsidian-600'}">
-                        <label class="flex items-center gap-3.5 flex-1 cursor-pointer select-none">
-                            <input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleMemberAttendance('${member.id}')" class="rpg-checkbox shrink-0">
-                            <div class="min-w-0">
-                                <p class="font-semibold text-sm ${isChecked ? 'text-gold-300' : 'text-slate-200'} truncate">${escapeHtml(member.name)}</p>
-                                <p class="text-[11px] text-slate-400">Points: <span class="text-gold-400 font-bold">${pts}</span> | DX Claimed: <span class="text-purple-300 font-bold">${dxCount}</span></p>
-                            </div>
-                        </label>
-
-                        <div class="flex items-center gap-1.5 ml-2">
-                            <button type="button" onclick="openPointsModal('${member.id}')" title="Adjust Bonus/Penalty Points" class="w-8 h-8 rounded-lg bg-obsidian-800 hover:bg-obsidian-700 text-slate-400 hover:text-gold-400 transition flex items-center justify-center text-xs">
-                                <i class="fa-solid fa-sliders"></i>
-                            </button>
-                            <button type="button" onclick="confirmDeleteMember('${member.id}')" title="Remove Member from Guild" class="w-8 h-8 rounded-lg bg-obsidian-800 hover:bg-red-950 text-slate-400 hover:text-red-400 transition flex items-center justify-center text-xs">
-                                <i class="fa-solid fa-user-minus"></i>
-                            </button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        function renderLooterDropdowns() {
-            const optionsHtml = `<option value="">-- Select Looter --</option>` +
-                appState.members.map(m => `<option value="${m.id}">${escapeHtml(m.name)}</option>`).join('');
-
-            const mainSelect = document.getElementById('loot-looter-select');
-            const currentVal = mainSelect.value;
-            mainSelect.innerHTML = optionsHtml;
-            if (appState.members.some(m => m.id === currentVal)) {
-                mainSelect.value = currentVal;
-            }
-
-            const editSelect = document.getElementById('edit-new-loot-looter');
-            if (editSelect) {
-                editSelect.innerHTML = optionsHtml;
+            if(document.getElementById('bossModal').classList.contains('flex') === false) {
+                // Keep boss manager updated if open
             }
         }
 
-        function renderCurrentLoots() {
-            const container = document.getElementById('current-loot-list');
-            const badge = document.getElementById('current-loot-badge');
-            badge.textContent = `${currentLoots.length} Item${currentLoots.length === 1 ? '' : 's'}`;
-
-            if (currentLoots.length === 0) {
-                container.innerHTML = `
-                    <div class="text-center py-6 text-slate-500 text-xs border border-dashed border-obsidian-700 rounded-xl">
-                        No loot drops added for this hunt yet.
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = currentLoots.map((loot, idx) => `
-                <div class="flex items-center justify-between bg-obsidian-950 border border-obsidian-700 rounded-xl p-2.5 text-xs">
-                    <div class="min-w-0 flex-1 pr-2">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-purple-300 truncate">${escapeHtml(loot.item)}</span>
-                            <span class="bg-obsidian-800 text-slate-300 px-1.5 py-0.5 rounded font-semibold">x${loot.qty}</span>
-                        </div>
-                        <div class="text-[11px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-2">
-                            <span>Looted by: <strong class="text-slate-200">${escapeHtml(loot.looterName)}</strong></span>
-                            <span>•</span>
-                            <button type="button" onclick="toggleCurrentLootCollected(${idx})" class="${loot.collected ? 'text-emerald-400' : 'text-amber-400'} hover:underline font-medium">
-                                ${loot.collected ? '<i class="fa-solid fa-circle-check"></i> In Guild Bank' : '<i class="fa-solid fa-clock"></i> With Looter'}
-                            </button>
-                        </div>
-                    </div>
-                    <button type="button" onclick="removeCurrentLoot(${idx})" class="w-7 h-7 rounded-lg bg-obsidian-800 hover:bg-red-950 text-slate-400 hover:text-red-400 flex items-center justify-center shrink-0">
-                        <i class="fa-solid fa-xmark"></i>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        function renderLeaderboard() {
-            const tbody = document.getElementById('leaderboard-tbody');
-            const sortBy = document.getElementById('leaderboard-sort').value;
-            let stats = calculateMemberStats();
-
-            stats.sort((a, b) => {
-                if (sortBy === 'points-desc') return b.totalPoints - a.totalPoints || a.name.localeCompare(b.name);
-                if (sortBy === 'points-asc') return a.totalPoints - b.totalPoints || a.name.localeCompare(b.name);
-                if (sortBy === 'dx-desc') return b.dxClaimed - a.dxClaimed || b.totalPoints - a.totalPoints;
-                if (sortBy === 'name-asc') return a.name.localeCompare(b.name);
-                if (sortBy === 'recent-desc') return (b.lastHuntNum || 0) - (a.lastHuntNum || 0);
-                return 0;
-            });
-
-            if (stats.length === 0) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" class="py-8 text-center text-slate-500 text-sm">No guild members registered yet.</td>
-                    </tr>
-                `;
-                return;
-            }
-
-            tbody.innerHTML = stats.map((member, index) => {
-                let rankDisplay = `<span class="text-slate-400 font-semibold">#${index + 1}</span>`;
-                if (sortBy === 'points-desc') {
-                    if (index === 0 && member.totalPoints > 0) rankDisplay = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-gold-500/20 text-gold-400 font-bold border border-gold-500/40"><i class="fa-solid fa-crown text-xs"></i></span>`;
-                    else if (index === 1 && member.totalPoints > 0) rankDisplay = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-slate-400/20 text-slate-300 font-bold">2</span>`;
-                    else if (index === 2 && member.totalPoints > 0) rankDisplay = `<span class="inline-flex items-center justify-center w-7 h-7 rounded-full bg-amber-700/30 text-amber-500 font-bold">3</span>`;
-                }
-
-                const bonusBadge = member.bonusPoints !== 0
-                    ? `<span class="ml-1 text-[10px] px-1.5 py-0.5 rounded bg-obsidian-800 text-slate-400" title="Manual adjustment">${member.bonusPoints > 0 ? '+' : ''}${member.bonusPoints} adj</span>`
-                    : '';
-
-                // Condition for "Claim DX" button: must have reached at least 70 points
-                const canClaimDX = member.totalPoints >= 70;
-                const dxButtonHtml = canClaimDX 
-                    ? `<button onclick="claimDX('${member.id}')" title="Claim DX Reward (-70 points)" class="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] font-extrabold shadow-lg shadow-emerald-600/20 transition active:scale-95">
-                         <i class="fa-solid fa-gift text-xs"></i> Claim DX
-                       </button>`
-                    : '';
-
-                return `
-                    <tr class="hover:bg-obsidian-800/40 transition">
-                        <td class="py-3.5 px-4">${rankDisplay}</td>
-                        <td class="py-3.5 px-4 font-semibold text-white">
-                            <div class="flex flex-wrap items-center gap-2.5">
-                                <span>${escapeHtml(member.name)}</span>
-                                ${dxButtonHtml}
-                            </div>
-                        </td>
-                        <td class="py-3.5 px-4 text-center">
-                            <span class="inline-block bg-obsidian-950 border border-gold-500/30 text-gold-400 font-extrabold px-3 py-1 rounded-lg text-sm">
-                                ${member.totalPoints} pts
-                            </span>
-                            ${bonusBadge}
-                        </td>
-                        <td class="py-3.5 px-4 text-center">
-                            <span class="inline-block bg-obsidian-950 border border-purple-500/30 text-purple-300 font-bold px-3 py-1 rounded-lg text-xs">
-                                ${member.dxClaimed} DX
-                            </span>
-                        </td>
-                        <td class="py-3.5 px-4">
-                            <div class="flex items-center gap-3 max-w-[180px]">
-                                <div class="flex-1 h-2 bg-obsidian-950 rounded-full overflow-hidden border border-obsidian-800">
-                                    <div class="h-full bg-gradient-to-r from-gold-500 to-emerald-400 rounded-full" style="width: ${member.percentage}%"></div>
-                                </div>
-                                <span class="text-xs font-medium text-slate-300 w-9 text-right">${member.percentage}%</span>
-                            </div>
-                        </td>
-                        <td class="py-3.5 px-4 text-right text-xs text-slate-400">
-                            ${member.lastHuntNum !== null ? `<span class="text-slate-200 font-semibold">Hunt #${member.lastHuntNum}</span>` : '<span class="text-slate-600">Never</span>'}
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function claimDX(memberId) {
-            const member = appState.members.find(m => m.id === memberId);
-            if (!member) return;
-
-            const stats = calculateMemberStats();
-            const stat = stats.find(s => s.id === memberId);
-
-            if (!stat || stat.totalPoints < 70) {
-                showToast(`${member.name} needs at least 70 points to claim DX.`, 'error');
-                return;
-            }
-
-            openConfirmModal(
-                'Claim DX Reward',
-                `Are you sure ${member.name} wants to claim a DX reward? This will automatically deduct 70 points and increment their # of DX Claimed counter by 1.`,
-                () => {
-                    member.dxClaimed = (member.dxClaimed || 0) + 1;
-                    saveState();
-                    renderAll();
-                    showToast(`Successfully claimed DX for ${member.name}! (-70 points)`, 'success');
-                }
-            );
-        }
-
-        function renderHistory() {
-            const container = document.getElementById('history-list-container');
-            const search = document.getElementById('history-search-input').value.toLowerCase().trim();
-            const uncollectedOnly = document.getElementById('filter-uncollected-only').checked;
-
-            let totalLootsCount = 0;
-            let pendingLootsCount = 0;
-            appState.hunts.forEach(h => {
-                (h.loots || []).forEach(l => {
-                    totalLootsCount += Number(l.qty) || 1;
-                    if (!l.collected) pendingLootsCount += Number(l.qty) || 1;
-                });
-            });
-
-            document.getElementById('stat-total-hunts').textContent = appState.hunts.length;
-            document.getElementById('stat-total-loots').textContent = totalLootsCount;
-            document.getElementById('stat-pending-loots').textContent = pendingLootsCount;
-
-            const memberMap = new Map(appState.members.map(m => [m.id, m.name]));
-
-            let sortedHunts = [...appState.hunts].sort((a, b) => b.huntNumber - a.huntNumber);
-
-            sortedHunts = sortedHunts.filter(hunt => {
-                if (uncollectedOnly) {
-                    const hasUncollected = (hunt.loots || []).some(l => !l.collected);
-                    if (!hasUncollected) return false;
-                }
-
-                if (!search) return true;
-
-                const huntNumMatch = `#${hunt.huntNumber}`.includes(search) || String(hunt.huntNumber).includes(search);
-                const bossMatch = (hunt.bossName || '').toLowerCase().includes(search);
-                const participantMatch = hunt.participants.some(pid => (memberMap.get(pid) || '').toLowerCase().includes(search));
-                const lootMatch = (hunt.loots || []).some(l => l.item.toLowerCase().includes(search) || l.looterName.toLowerCase().includes(search));
-
-                return huntNumMatch || bossMatch || participantMatch || lootMatch;
-            });
-
-            if (sortedHunts.length === 0) {
-                container.innerHTML = `
-                    <div class="glass-panel rounded-2xl p-12 text-center text-slate-500">
-                        <i class="fa-solid fa-scroll text-4xl mb-3 text-obsidian-600"></i>
-                        <p class="text-base font-semibold text-slate-300">No boss hunt records found</p>
-                        <p class="text-xs mt-1">Submit a boss hunt from the Tally tab or adjust your search filters.</p>
-                    </div>
-                `;
-                return;
-            }
-
-            container.innerHTML = sortedHunts.map(hunt => {
-                const dateObj = new Date(hunt.timestamp);
-                const formattedDate = dateObj.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) +
-                    ' • ' + dateObj.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-
-                const participantNames = hunt.participants.map(pid => memberMap.get(pid) || 'Departed Member');
-
-                const lootsHtml = (hunt.loots && hunt.loots.length > 0)
-                    ? hunt.loots.map((loot, lIdx) => `
-                        <div class="flex flex-wrap items-center justify-between gap-2 bg-obsidian-950 border ${loot.collected ? 'border-obsidian-800' : 'border-amber-500/40'} rounded-xl px-3 py-2 text-xs">
-                            <div class="flex items-center gap-2">
-                                <i class="fa-solid fa-gem text-purple-400"></i>
-                                <span class="font-bold text-slate-200">${escapeHtml(loot.item)}</span>
-                                <span class="bg-obsidian-800 text-slate-300 px-1.5 py-0.5 rounded font-semibold">x${loot.qty}</span>
-                                <span class="text-slate-400">→ Looter: <strong class="text-white">${escapeHtml(loot.looterName)}</strong></span>
-                            </div>
-                            <button onclick="toggleHistoryLootCollected('${hunt.id}', ${lIdx})" class="px-2.5 py-1 rounded-lg font-semibold transition flex items-center gap-1.5 ${loot.collected ? 'bg-emerald-950/80 text-emerald-400 border border-emerald-700/50 hover:bg-emerald-900' : 'bg-amber-950/80 text-amber-300 border border-amber-600/50 hover:bg-amber-900'}">
-                                ${loot.collected ? '<i class="fa-solid fa-check"></i> Collected by GM' : '<i class="fa-solid fa-hourglass-half"></i> Mark Collected'}
-                            </button>
-                        </div>
-                    `).join('')
-                    : `<p class="text-xs text-slate-500 italic">No loot drops recorded for this encounter.</p>`;
-
-                return `
-                    <div class="glass-panel rounded-2xl p-5 shadow-lg border border-obsidian-700/80 hover:border-obsidian-600 transition">
-                        <div class="flex flex-wrap items-start justify-between gap-4 border-b border-obsidian-700/80 pb-3.5 mb-4">
-                            <div>
-                                <div class="flex flex-wrap items-center gap-2.5">
-                                    <span class="bg-gold-500 text-obsidian-950 font-extrabold text-xs px-2.5 py-1 rounded-lg">
-                                        HUNT #${hunt.huntNumber}
-                                    </span>
-                                    <h3 class="text-lg font-bold text-white">${escapeHtml(hunt.bossName || 'Unnamed Boss Encounter')}</h3>
-                                </div>
-                                <p class="text-xs text-slate-400 mt-1">
-                                    <i class="fa-regular fa-clock mr-1"></i> ${formattedDate}
-                                </p>
-                            </div>
-
-                            <div class="flex items-center gap-2">
-                                <button onclick="openEditHuntModal('${hunt.id}')" class="px-3.5 py-2 rounded-xl bg-obsidian-800 hover:bg-gold-500 hover:text-obsidian-950 border border-obsidian-600 text-xs font-bold text-slate-200 transition flex items-center gap-1.5">
-                                    <i class="fa-solid fa-pen-to-square"></i>
-                                    <span>Edit Hunt / Retroactive Tally</span>
-                                </button>
-                                <button onclick="confirmDeleteHunt('${hunt.id}')" title="Delete Hunt Record" class="p-2 rounded-xl bg-obsidian-800 hover:bg-red-950 border border-obsidian-600 text-slate-400 hover:text-red-400 transition">
-                                    <i class="fa-solid fa-trash"></i>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="grid grid-cols-1 lg:grid-cols-12 gap-5">
-                            <div class="lg:col-span-6">
-                                <p class="text-[11px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                                    <i class="fa-solid fa-users text-gold-400 mr-1"></i> Attendees (${participantNames.length})
-                                </p>
-                                <div class="flex flex-wrap gap-1.5">
-                                    ${participantNames.length > 0
-                                        ? participantNames.map(name => `<span class="bg-obsidian-950 border border-obsidian-700 text-slate-200 text-xs px-2.5 py-1 rounded-lg">${escapeHtml(name)}</span>`).join('')
-                                        : `<span class="text-xs text-slate-500 italic">No participants recorded</span>`
-                                    }
-                                </div>
-                            </div>
-
-                            <div class="lg:col-span-6">
-                                <p class="text-[11px] font-bold uppercase tracking-wider text-purple-400 mb-2">
-                                    <i class="fa-solid fa-gem mr-1"></i> Loot Drops (${(hunt.loots || []).length})
-                                </p>
-                                <div class="space-y-2">
-                                    ${lootsHtml}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        }
-
-        // =========================================================================
-        // USER ACTIONS: MEMBER MANAGEMENT & ATTENDANCE SELECTION
-        // =========================================================================
-        function handleAddMember(event) {
-            event.preventDefault();
-            const input = document.getElementById('new-member-input');
-            const name = input.value.trim();
-
-            if (!name) {
-                showToast('Please enter a guild member name.', 'error');
-                return;
-            }
-
-            if (appState.members.some(m => m.name.toLowerCase() === name.toLowerCase())) {
-                showToast(`"${name}" is already in the guild roster.`, 'error');
-                return;
-            }
-
-            const newMember = {
-                id: 'mem_' + Date.now(),
-                name: name,
-                bonusPoints: 0,
-                dxClaimed: 0
-            };
-
-            appState.members.push(newMember);
-            currentSelection.add(newMember.id);
-            input.value = '';
-            saveState();
-            renderAll();
-            showToast(`Added ${name} to the guild roster!`, 'success');
-        }
-
-        function confirmDeleteMember(memberId) {
-            const member = appState.members.find(m => m.id === memberId);
-            if (!member) return;
-
-            openConfirmModal(
-                'Remove Guild Member',
-                `Are you sure you want to remove "${member.name}" from the active guild roster? Past hunt records will remain intact.`,
-                () => {
-                    appState.members = appState.members.filter(m => m.id !== memberId);
-                    currentSelection.delete(memberId);
-                    saveState();
-                    renderAll();
-                    showToast(`Removed ${member.name} from roster.`, 'info');
-                }
-            );
-        }
-
-        function toggleMemberAttendance(memberId) {
-            if (currentSelection.has(memberId)) {
-                currentSelection.delete(memberId);
-            } else {
-                currentSelection.add(memberId);
-            }
-            renderRoster();
-        }
-
-        function selectAllMembers() {
-            const searchQuery = document.getElementById('roster-search-input').value.toLowerCase().trim();
-            appState.members.forEach(m => {
-                if (!searchQuery || m.name.toLowerCase().includes(searchQuery)) {
-                    currentSelection.add(m.id);
-                }
-            });
-            renderRoster();
-        }
-
-        function clearAllSelections() {
-            currentSelection.clear();
-            renderRoster();
-        }
-
-        function openPointsModal(memberId) {
-            const member = appState.members.find(m => m.id === memberId);
-            if (!member) return;
-            adjustingMemberId = memberId;
-            document.getElementById('points-modal-member').textContent = `Member: ${member.name}`;
-            document.getElementById('points-adjustment-input').value = member.bonusPoints || 0;
-            const modal = document.getElementById('points-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closePointsModal() {
-            adjustingMemberId = null;
-            const modal = document.getElementById('points-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        function savePointsAdjustment() {
-            if (!adjustingMemberId) return;
-            const member = appState.members.find(m => m.id === adjustingMemberId);
-            if (member) {
-                member.bonusPoints = parseInt(document.getElementById('points-adjustment-input').value, 10) || 0;
-                saveState();
-                renderAll();
-                showToast(`Updated adjustment points for ${member.name}.`, 'success');
-            }
-            closePointsModal();
-        }
-
-        // =========================================================================
-        // LOOT & SUBMISSION LOGIC
-        // =========================================================================
-        function addLootToCurrentHunt() {
-            const itemInput = document.getElementById('loot-item-input');
-            const qtyInput = document.getElementById('loot-qty-input');
-            const looterSelect = document.getElementById('loot-looter-select');
-            const collectedCheckbox = document.getElementById('loot-collected-checkbox');
-
-            const itemName = itemInput.value.trim();
-            const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
-            const looterId = looterSelect.value;
-
-            if (!itemName) {
-                showToast('Please enter the loot item name.', 'error');
-                return;
-            }
-            if (!looterId) {
-                showToast('Please select which guild member looted this item.', 'error');
-                return;
-            }
-
-            const looter = appState.members.find(m => m.id === looterId);
-
-            currentLoots.push({
-                id: 'loot_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                item: itemName,
-                qty: qty,
-                looterId: looterId,
-                looterName: looter ? looter.name : 'Unknown',
-                collected: collectedCheckbox.checked
-            });
-
-            itemInput.value = '';
-            qtyInput.value = '1';
-            collectedCheckbox.checked = false;
-
-            renderCurrentLoots();
-            showToast(`Logged ${qty}x ${itemName}`, 'success');
-        }
-
-        function toggleCurrentLootCollected(index) {
-            if (currentLoots[index]) {
-                currentLoots[index].collected = !currentLoots[index].collected;
-                renderCurrentLoots();
-            }
-        }
-
-        function removeCurrentLoot(index) {
-            currentLoots.splice(index, 1);
-            renderCurrentLoots();
-        }
-
-        function submitBossHunt() {
-            const huntNumInput = document.getElementById('hunt-number-input');
-            const bossNameInput = document.getElementById('boss-name-input');
-
-            const huntNumber = parseInt(huntNumInput.value, 10);
-            if (isNaN(huntNumber) || huntNumber < 1) {
-                showToast('Please enter a valid Boss Hunt number.', 'error');
-                return;
-            }
-
-            if (currentSelection.size === 0) {
-                showToast('Please tick at least one guild member who participated.', 'error');
-                return;
-            }
-
-            if (appState.hunts.some(h => h.huntNumber === huntNumber)) {
-                openConfirmModal(
-                    `Duplicate Hunt #${huntNumber}`,
-                    `Boss Hunt #${huntNumber} already exists in history. Do you still want to record another entry with #${huntNumber}?`,
-                    () => finalizeHuntSubmission(huntNumber, bossNameInput.value.trim())
-                );
-                return;
-            }
-
-            finalizeHuntSubmission(huntNumber, bossNameInput.value.trim());
-        }
-
-        function finalizeHuntSubmission(huntNumber, bossName) {
-            const newHunt = {
-                id: 'hunt_' + Date.now(),
-                huntNumber: huntNumber,
-                bossName: bossName || `Boss Encounter #${huntNumber}`,
-                timestamp: new Date().toISOString(),
-                participants: Array.from(currentSelection),
-                loots: [...currentLoots]
-            };
-
-            appState.hunts.push(newHunt);
-
-            const maxHuntNum = appState.hunts.reduce((max, h) => Math.max(max, h.huntNumber), huntNumber);
-            appState.nextHuntNumber = maxHuntNum + 1;
-
-            currentSelection.clear();
-            currentLoots = [];
-            document.getElementById('hunt-number-input').value = appState.nextHuntNumber;
-            document.getElementById('submit-btn-hunt-num').textContent = appState.nextHuntNumber;
-            document.getElementById('boss-name-input').value = '';
-            document.getElementById('roster-search-input').value = '';
-
-            saveState();
-            renderAll();
-            showToast(`Boss Hunt #${huntNumber} submitted! +1 pt awarded to ${newHunt.participants.length} members.`, 'success');
-        }
-
-        // =========================================================================
-        // HISTORY & RETROACTIVE EDIT MODAL
-        // =========================================================================
-        function toggleHistoryLootCollected(huntId, lootIndex) {
-            const hunt = appState.hunts.find(h => h.id === huntId);
-            if (!hunt || !hunt.loots[lootIndex]) return;
-
-            hunt.loots[lootIndex].collected = !hunt.loots[lootIndex].collected;
-            saveState();
-            renderHistory();
-            showToast(
-                hunt.loots[lootIndex].collected ? 'Marked as collected by Guild Leader.' : 'Marked as pending collection.',
-                'info'
-            );
-        }
-
-        function confirmDeleteHunt(huntId) {
-            const hunt = appState.hunts.find(h => h.id === huntId);
-            if (!hunt) return;
-
-            openConfirmModal(
-                `Delete Boss Hunt #${hunt.huntNumber}?`,
-                'Deleting this record will automatically deduct 1 attendance point from everyone who participated in it. This cannot be undone.',
-                () => {
-                    appState.hunts = appState.hunts.filter(h => h.id !== huntId);
-                    saveState();
-                    renderAll();
-                    showToast(`Deleted Boss Hunt #${hunt.huntNumber} and recalculated points.`, 'info');
-                }
-            );
-        }
-
-        function openEditHuntModal(huntId) {
-            const hunt = appState.hunts.find(h => h.id === huntId);
-            if (!hunt) return;
-
-            editingHuntId = huntId;
-            editingHuntParticipants = new Set(hunt.participants);
-            editingHuntLoots = JSON.parse(JSON.stringify(hunt.loots || []));
-
-            document.getElementById('edit-hunt-title').textContent = `Edit Boss Hunt #${hunt.huntNumber}`;
-            document.getElementById('edit-hunt-number').value = hunt.huntNumber;
-            document.getElementById('edit-hunt-boss').value = hunt.bossName || '';
-
-            renderEditHuntModalContents();
-
-            const modal = document.getElementById('edit-hunt-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeEditHuntModal() {
-            editingHuntId = null;
-            const modal = document.getElementById('edit-hunt-modal');
-            modal.classList.add('hidden');
-            modal.classList.remove('flex');
-        }
-
-        function renderEditHuntModalContents() {
-            document.getElementById('edit-selected-count').textContent = editingHuntParticipants.size;
-
-            const grid = document.getElementById('edit-hunt-members-grid');
-            grid.innerHTML = appState.members.map(member => {
-                const checked = editingHuntParticipants.has(member.id);
-                return `
-                    <label class="flex items-center gap-2.5 p-2 rounded-lg border cursor-pointer transition ${checked ? 'bg-gold-500/15 border-gold-500/50 text-gold-300' : 'bg-obsidian-900 border-obsidian-800 text-slate-300'}">
-                        <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleEditModalParticipant('${member.id}')" class="rpg-checkbox !w-4 !h-4">
-                        <span class="text-xs font-semibold truncate">${escapeHtml(member.name)}</span>
-                    </label>
-                `;
-            }).join('');
-
-            const lootList = document.getElementById('edit-hunt-loot-list');
-            if (editingHuntLoots.length === 0) {
-                lootList.innerHTML = `<p class="text-xs text-slate-500 italic text-center py-3">No loot drops logged for this hunt.</p>`;
-            } else {
-                lootList.innerHTML = editingHuntLoots.map((loot, idx) => `
-                    <div class="flex flex-wrap items-center justify-between gap-2 bg-obsidian-950 border border-obsidian-700 rounded-lg px-3 py-2 text-xs">
-                        <div class="flex items-center gap-2">
-                            <span class="font-bold text-purple-300">${escapeHtml(loot.item)}</span>
-                            <span class="bg-obsidian-800 px-1.5 py-0.5 rounded">x${loot.qty}</span>
-                            <span class="text-slate-400">(${escapeHtml(loot.looterName)})</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button type="button" onclick="toggleEditModalLootCollected(${idx})" class="px-2 py-1 rounded font-medium ${loot.collected ? 'bg-emerald-950 text-emerald-400 border border-emerald-700/50' : 'bg-amber-950 text-amber-300 border border-amber-700/50'}">
-                                ${loot.collected ? 'Collected by GM' : 'Uncollected'}
-                            </button>
-                            <button type="button" onclick="removeEditModalLoot(${idx})" class="w-7 h-7 rounded bg-obsidian-800 hover:bg-red-950 text-slate-400 hover:text-red-400 flex items-center justify-center">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                `).join('');
-            }
-        }
-
-        function toggleEditModalParticipant(memberId) {
-            if (editingHuntParticipants.has(memberId)) {
-                editingHuntParticipants.delete(memberId);
-            } else {
-                editingHuntParticipants.add(memberId);
-            }
-            renderEditHuntModalContents();
-        }
-
-        function addLootInEditModal() {
-            const itemInput = document.getElementById('edit-new-loot-item');
-            const qtyInput = document.getElementById('edit-new-loot-qty');
-            const looterSelect = document.getElementById('edit-new-loot-looter');
-
-            const item = itemInput.value.trim();
-            const qty = Math.max(1, parseInt(qtyInput.value, 10) || 1);
-            const looterId = looterSelect.value;
-
-            if (!item || !looterId) {
-                showToast('Enter item name and select a looter.', 'error');
-                return;
-            }
-
-            const looter = appState.members.find(m => m.id === looterId);
-            editingHuntLoots.push({
-                id: 'loot_' + Date.now(),
-                item,
-                qty,
-                looterId,
-                looterName: looter ? looter.name : 'Unknown',
-                collected: false
-            });
-
-            itemInput.value = '';
-            qtyInput.value = '1';
-            renderEditHuntModalContents();
-        }
-
-        function toggleEditModalLootCollected(idx) {
-            if (editingHuntLoots[idx]) {
-                editingHuntLoots[idx].collected = !editingHuntLoots[idx].collected;
-                renderEditHuntModalContents();
-            }
-        }
-
-        function removeEditModalLoot(idx) {
-            editingHuntLoots.splice(idx, 1);
-            renderEditHuntModalContents();
-        }
-
-        function saveEditedHunt() {
-            if (!editingHuntId) return;
-            const hunt = appState.hunts.find(h => h.id === editingHuntId);
-            if (!hunt) return;
-
-            const newNum = parseInt(document.getElementById('edit-hunt-number').value, 10);
-            if (isNaN(newNum) || newNum < 1) {
-                showToast('Please enter a valid Hunt Number.', 'error');
-                return;
-            }
-
-            hunt.huntNumber = newNum;
-            hunt.bossName = document.getElementById('edit-hunt-boss').value.trim() || `Boss Encounter #${newNum}`;
-            hunt.participants = Array.from(editingHuntParticipants);
-            hunt.loots = editingHuntLoots;
-
-            saveState();
-            closeEditHuntModal();
-            renderAll();
-            showToast(`Updated Boss Hunt #${newNum} & recalculated Master Attendance!`, 'success');
-        }
-
-        // =========================================================================
-        // UTILITIES & EXPORT/IMPORT
-        // =========================================================================
+        // --- TAB SWITCHING ---
         function switchTab(tab) {
-            activeTab = tab;
-            const tallyView = document.getElementById('view-tally');
-            const historyView = document.getElementById('view-history');
-            const tallyBtn = document.getElementById('tab-btn-tally');
-            const historyBtn = document.getElementById('tab-btn-history');
+            const tallySec = document.getElementById('section-tally');
+            const historySec = document.getElementById('section-history');
+            const tabTally = document.getElementById('tab-tally');
+            const tabHistory = document.getElementById('tab-history');
 
             if (tab === 'tally') {
-                tallyView.classList.remove('hidden');
-                historyView.classList.add('hidden');
-                tallyBtn.className = 'px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 bg-obsidian-800 text-gold-400 shadow';
-                historyBtn.className = 'px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-white';
+                tallySec.classList.remove('hidden');
+                historySec.classList.add('hidden');
+                tabTally.className = "px-5 py-3 font-bold text-sm border-b-2 border-amber-500 text-amber-400 transition flex items-center gap-2";
+                tabHistory.className = "px-5 py-3 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-2";
             } else {
-                tallyView.classList.add('hidden');
-                historyView.classList.remove('hidden');
-                historyBtn.className = 'px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 bg-obsidian-800 text-gold-400 shadow';
-                tallyBtn.className = 'px-4 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-2 text-slate-400 hover:text-white';
+                tallySec.classList.add('hidden');
+                historySec.classList.remove('hidden');
+                tabHistory.className = "px-5 py-3 font-bold text-sm border-b-2 border-amber-500 text-amber-400 transition flex items-center gap-2";
+                tabTally.className = "px-5 py-3 font-bold text-sm border-b-2 border-transparent text-slate-400 hover:text-slate-200 transition flex items-center gap-2";
                 renderHistory();
             }
         }
 
-        function copyMasterlistToClipboard() {
-            const stats = calculateMemberStats().sort((a, b) => b.totalPoints - a.totalPoints || a.name.localeCompare(b.name));
-            const latestHunt = appState.hunts.length > 0
-                ? Math.max(...appState.hunts.map(h => h.huntNumber))
-                : 0;
-
-            let text = `⚔️ **GUILD BOSS HUNT MASTER ATTENDANCE** (Up to Hunt #${latestHunt})\n`;
-            text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-
-            stats.forEach((m, idx) => {
-                const medal = idx === 0 ? '👑' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '▪️';
-                text += `${medal} **${m.name}** — \`${m.totalPoints} pts\` | DX Claimed: \`${m.dxClaimed}\` (${m.percentage}%)\n`;
+        // --- BOSS DROPDOWN & MANAGER ---
+        function renderBossDropdown() {
+            const select = document.getElementById('bossSelect');
+            const currentVal = select.value;
+            select.innerHTML = '';
+            
+            db.bosses.forEach(boss => {
+                const opt = document.createElement('option');
+                opt.value = boss;
+                opt.textContent = boss;
+                select.appendChild(opt);
             });
 
-            text += `━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n`;
-            text += `Total Hunts Recorded: ${appState.hunts.length}`;
-
-            const helper = document.getElementById('clipboard-helper');
-            helper.value = text;
-            helper.select();
-            try {
-                document.execCommand('copy');
-                showToast('Masterlist copied to clipboard (Discord formatted)!', 'success');
-            } catch (err) {
-                showToast('Could not copy automatically. Please try again.', 'error');
+            if (db.bosses.includes(currentVal)) {
+                select.value = currentVal;
             }
         }
 
-        function exportData() {
-            const dataStr = JSON.stringify(appState, null, 2);
-            const blob = new Blob([dataStr], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            const dateStamp = new Date().toISOString().slice(0, 10);
-            a.href = url;
-            a.download = `guild-boss-attendance-backup-${dateStamp}.json`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-            showToast('Database exported as JSON!', 'success');
+        function openBossManager() {
+            renderBossManagerList();
+            document.getElementById('bossModal').classList.remove('hidden');
+            document.getElementById('bossModal').classList.add('flex');
         }
 
-        function importData(event) {
-            const file = event.target.files[0];
-            if (!file) return;
+        function closeBossManager() {
+            document.getElementById('bossModal').classList.remove('flex');
+            document.getElementById('bossModal').classList.add('hidden');
+            renderBossDropdown();
+        }
 
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                try {
-                    const imported = JSON.parse(e.target.result);
-                    if (!Array.isArray(imported.members) || !Array.isArray(imported.hunts)) {
-                        throw new Error('Invalid schema');
-                    }
-                    appState = {
-                        members: imported.members.map(m => ({ ...m, dxClaimed: m.dxClaimed || 0 })),
-                        hunts: imported.hunts,
-                        nextHuntNumber: imported.nextHuntNumber || (imported.hunts.length + 1)
-                    };
-                    currentSelection.clear();
-                    currentLoots = [];
-                    document.getElementById('hunt-number-input').value = appState.nextHuntNumber;
-                    document.getElementById('submit-btn-hunt-num').textContent = appState.nextHuntNumber;
-                    saveState();
-                    renderAll();
-                    showToast('Guild database successfully restored!', 'success');
-                } catch (err) {
-                    showToast('Invalid JSON backup file.', 'error');
+        function renderBossManagerList() {
+            const container = document.getElementById('bossListContainer');
+            container.innerHTML = '';
+
+            if (db.bosses.length === 0) {
+                container.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No bosses added yet.</p>';
+                return;
+            }
+
+            db.bosses.forEach((boss, index) => {
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between bg-darkBg px-3 py-2 rounded-lg border border-borderCol text-sm";
+                row.innerHTML = `
+                    <span class="font-medium text-slate-200">${escapeHtml(boss)}</span>
+                    <div class="flex items-center gap-2">
+                        <button onclick="editBoss(${index})" class="text-xs bg-slate-700 hover:bg-slate-600 text-slate-200 px-2.5 py-1 rounded transition"><i class="fa-solid fa-pen"></i></button>
+                        <button onclick="deleteBoss(${index})" class="text-xs bg-red-900/40 hover:bg-red-900 text-red-200 px-2.5 py-1 rounded transition"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function addNewBoss() {
+            const input = document.getElementById('newBossInput');
+            const name = input.value.trim();
+            if (!name) return;
+            if (db.bosses.includes(name)) {
+                alert('Boss already exists in the list!');
+                return;
+            }
+            db.bosses.push(name);
+            input.value = '';
+            saveData();
+            renderBossManagerList();
+        }
+
+        function editBoss(index) {
+            const current = db.bosses[index];
+            const updated = prompt("Edit boss name:", current);
+            if (updated !== null && updated.trim() !== "") {
+                const trimmed = updated.trim();
+                if (db.bosses.includes(trimmed) && db.bosses.indexOf(trimmed) !== index) {
+                    alert('Another boss with this name already exists.');
+                    return;
                 }
-                event.target.value = '';
-            };
-            reader.readAsText(file);
+                db.bosses[index] = trimmed;
+                saveData();
+                renderBossManagerList();
+            }
         }
 
-        function confirmClearSampleData() {
-            openConfirmModal(
-                'Reset All Guild Data?',
-                'This will wipe all members, attendance points, DX claims, and boss hunt history so you can start completely fresh from Boss Hunt #1. Export a JSON backup first if you want to keep your records.',
-                () => {
-                    appState = {
-                        members: [],
-                        hunts: [],
-                        nextHuntNumber: 1
-                    };
-                    currentSelection.clear();
-                    currentLoots = [];
-                    document.getElementById('hunt-number-input').value = 1;
-                    document.getElementById('submit-btn-hunt-num').textContent = 1;
-                    saveState();
-                    renderAll();
-                    showToast('All data cleared. Ready for fresh guild tracking!', 'info');
-                }
-            );
+        function deleteBoss(index) {
+            if (db.bosses.length <= 1) {
+                alert('You must keep at least one boss in the list.');
+                return;
+            }
+            if (confirm(`Remove "${db.bosses[index]}" from the boss list?`)) {
+                db.bosses.splice(index, 1);
+                saveData();
+                renderBossManagerList();
+            }
         }
 
-        function openConfirmModal(title, message, onConfirm) {
-            const modal = document.getElementById('confirm-modal');
-            document.getElementById('confirm-title').textContent = title;
-            document.getElementById('confirm-message').textContent = message;
+        // --- ROSTER TALLY CHECKBOXES ---
+        function renderTallyCheckboxes() {
+            const container = document.getElementById('tallyCheckboxes');
+            const filter = document.getElementById('rosterSearch').value.toLowerCase();
+            container.innerHTML = '';
 
-            const okBtn = document.getElementById('confirm-ok-btn');
-            const cancelBtn = document.getElementById('confirm-cancel-btn');
+            const filteredMembers = db.members.filter(m => m.toLowerCase().includes(filter));
 
-            const cleanup = () => {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-                okBtn.onclick = null;
-                cancelBtn.onclick = null;
-            };
+            if (filteredMembers.length === 0) {
+                container.innerHTML = '<p class="col-span-full text-xs text-slate-500 text-center py-4">No matching members found.</p>';
+                return;
+            }
 
-            okBtn.onclick = () => {
-                cleanup();
-                onConfirm();
-            };
-            cancelBtn.onclick = cleanup;
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
+            filteredMembers.forEach(member => {
+                const label = document.createElement('label');
+                label.className = "flex items-center gap-2.5 bg-darkBg/80 hover:bg-darkBg p-2 rounded-lg border border-borderCol cursor-pointer transition text-xs font-medium text-slate-200";
+                label.innerHTML = `
+                    <input type="checkbox" name="tallyMember" value="${escapeHtml(member)}" class="w-4 h-4 rounded bg-darkBg border-borderCol text-amber-500 focus:ring-amber-500 focus:ring-offset-darkBg">
+                    <span class="truncate" title="${escapeHtml(member)}">${escapeHtml(member)}</span>
+                `;
+                container.appendChild(label);
+            });
         }
 
-        function showToast(message, type = 'info') {
-            const container = document.getElementById('toast-container');
-            const toast = document.createElement('div');
+        function toggleAllAttendance(selectState) {
+            const checkboxes = document.querySelectorAll('input[name="tallyMember"]');
+            checkboxes.forEach(cb => cb.checked = selectState);
+        }
 
-            const styles = {
-                success: 'bg-emerald-950/95 border-emerald-500/60 text-emerald-200',
-                error: 'bg-red-950/95 border-red-500/60 text-red-200',
-                info: 'bg-obsidian-800/95 border-gold-500/50 text-slate-100'
-            };
-
-            const icons = {
-                success: 'fa-circle-check text-emerald-400',
-                error: 'fa-circle-exclamation text-red-400',
-                info: 'fa-circle-info text-gold-400'
-            };
-
-            toast.className = `pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-xl border shadow-2xl text-xs font-semibold transform transition-all duration-300 translate-y-2 opacity-0 ${styles[type] || styles.info}`;
-            toast.innerHTML = `
-                <i class="fa-solid ${icons[type] || icons.info} text-base"></i>
-                <span>${escapeHtml(message)}</span>
-            `;
-
-            container.appendChild(toast);
-            requestAnimationFrame(() => {
-                toast.classList.remove('translate-y-2', 'opacity-0');
+        // --- LOOT ROWS LOGGER ---
+        function addLootRow(item = '', quantity = 1, looter = '') {
+            const container = document.getElementById('lootRowsContainer');
+            const rowId = 'loot_row_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+            
+            let memberOptions = '<option value="">-- Select Looter --</option>';
+            db.members.forEach(m => {
+                memberOptions += `<option value="${escapeHtml(m)}" ${m === looter ? 'selected' : ''}>${escapeHtml(m)}</option>`;
             });
 
-            setTimeout(() => {
-                toast.classList.add('opacity-0', 'translate-y-2');
-                setTimeout(() => toast.remove(), 300);
-            }, 3200);
+            const div = document.createElement('div');
+            div.className = "flex flex-col sm:flex-row gap-2 items-center bg-darkBg/60 p-2.5 rounded-lg border border-borderCol";
+            div.id = rowId;
+            div.innerHTML = `
+                <input type="text" placeholder="Item Name (e.g. Excellent Ring)" value="${escapeHtml(item)}" class="loot-item w-full sm:flex-1 bg-darkBg border border-borderCol rounded px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                <input type="number" min="1" value="${quantity}" placeholder="Qty" class="loot-qty w-full sm:w-20 bg-darkBg border border-borderCol rounded px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                <select class="loot-looter w-full sm:w-48 bg-darkBg border border-borderCol rounded px-3 py-1.5 text-xs text-slate-100 focus:outline-none focus:border-amber-500">
+                    ${memberOptions}
+                </select>
+                <button onclick="document.getElementById('${rowId}').remove()" class="text-red-400 hover:text-red-300 p-1.5 text-xs" title="Remove item"><i class="fa-solid fa-trash-can"></i></button>
+            `;
+            container.appendChild(div);
+        }
+
+        // --- SUBMIT BOSS HUNT ---
+        function submitBossHunt() {
+            const huntNumber = document.getElementById('huntNumber').value.trim();
+            const boss = document.getElementById('bossSelect').value;
+            const date = document.getElementById('huntDate').value;
+
+            if (!huntNumber) {
+                alert('Please enter a hunt attempt number (e.g., Boss Hunt #120).');
+                document.getElementById('huntNumber').focus();
+                return;
+            }
+
+            // Gather attendees
+            const attendees = [];
+            document.querySelectorAll('input[name="tallyMember"]:checked').forEach(cb => {
+                attendees.push(cb.value);
+            });
+
+            if (attendees.length === 0) {
+                if (!confirm('No guild members are ticked as present for this hunt. Submit anyway?')) {
+                    return;
+                }
+            }
+
+            // Gather loots
+            const loots = [];
+            document.querySelectorAll('#lootRowsContainer > div').forEach(row => {
+                const itemName = row.querySelector('.loot-item').value.trim();
+                const qty = parseInt(row.querySelector('.loot-qty').value) || 1;
+                const looter = row.querySelector('.loot-looter').value;
+                if (itemName) {
+                    loots.push({ item: itemName, quantity: qty, looter: looter || 'Unassigned', collected: false });
+                }
+            });
+
+            // Save hunt record
+            const newHunt = {
+                id: 'hunt_' + Date.now(),
+                number: huntNumber,
+                boss: boss,
+                date: date || new Date().toISOString().split('T')[0],
+                attendees: attendees,
+                loots: loots
+            };
+
+            db.hunts.push(newHunt);
+
+            // Reset form
+            document.getElementById('huntNumber').value = '';
+            document.getElementById('lootRowsContainer').innerHTML = '';
+            toggleAllAttendance(false);
+
+            saveData();
+            alert(`Boss Hunt "${huntNumber}" submitted successfully! Attendance points updated.`);
+        }
+
+        // --- CALCULATE STATS & MASTERLIST ---
+        function getMemberStats() {
+            const stats = {};
+            db.members.forEach(m => {
+                stats[m] = {
+                    name: m,
+                    points: 0,
+                    attendedHunts: 0,
+                    lastAttended: 'Never',
+                    dxClaimed: 0
+                };
+            });
+
+            // Also track dx claimed counts from persistent storage or attach to member objects
+            if (!db.dxClaimedRecords) db.dxClaimedRecords = {};
+
+            db.members.forEach(m => {
+                stats[m].dxClaimed = db.dxClaimedRecords[m] || 0;
+            });
+
+            db.hunts.forEach(hunt => {
+                hunt.attendees.forEach(attendee => {
+                    if (stats[attendee]) {
+                        stats[attendee].points += 1; // 1 point per hunt attended
+                        stats[attendee].attendedHunts += 1;
+                        stats[attendee].lastAttended = hunt.number;
+                    }
+                });
+            });
+
+            // Subtract 70 points per DX Claimed
+            db.members.forEach(m => {
+                const claimedCount = stats[m].dxClaimed || 0;
+                stats[m].points -= (claimedCount * 70);
+                if (stats[m].points < 0) stats[m].points = 0; // Prevent negative points visually
+            });
+
+            return Object.values(stats);
+        }
+
+        function renderMasterlist() {
+            const tbody = document.getElementById('masterlistTableBody');
+            tbody.innerHTML = '';
+
+            const stats = getMemberStats();
+            // Sort by Total Points descending, then Attended Hunts descending, then Name ascending
+            stats.sort((a, b) => {
+                if (b.points !== a.points) return b.points - a.points;
+                if (b.attendedHunts !== a.attendedHunts) return b.attendedHunts - a.attendedHunts;
+                return a.name.localeCompare(b.name);
+            });
+
+            const totalHuntsCount = db.hunts.length;
+
+            if (stats.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="7" class="text-center py-6 text-slate-500">No guild members found. Click "Add Guild Member" to begin.</td></tr>`;
+                return;
+            }
+
+            stats.forEach((member, index) => {
+                const percentage = totalHuntsCount > 0 ? ((member.attendedHunts / totalHuntsCount) * 100).toFixed(1) : '0.0';
+                
+                // Check if eligible for DX Claim (>= 70 actual points or before deduction? User prompt: "required points to be able to claim DX... once clicked it automatically subtracts 70 points")
+                // Let's check raw points before DX deduction for eligibility: raw points = attendedHunts * 1? Wait, if points get subtracted, let's check current accumulated points or total attended points. 
+                // Usually, if you have 70 points available, you can claim. Let's check `(member.attendedHunts - (member.dxClaimed * 70)) >= 70` or simply `member.points >= 70`? Wait! If 1 hunt = 1 point, getting 70 points means attending 70 hunts. If points subtract 70, then points drop. So eligibility should be based on accumulated total points (`member.attendedHunts` since 1 hunt = 1 point, OR current `member.points >= 70`). Let's use current `member.points >= 70`.
+                const canClaimDX = member.points >= 70;
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-darkBg/40 transition";
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-400">#${index + 1}</td>
+                    <td class="p-3 font-semibold text-slate-100 flex items-center gap-2">
+                        ${escapeHtml(member.name)}
+                        ${canClaimDX ? '<span class="bg-amber-500/20 text-amber-400 text-[10px] px-1.5 py-0.5 rounded font-bold border border-amber-500/30">DX Ready</span>' : ''}
+                    </td>
+                    <td class="p-3 text-center font-extrabold text-amber-400 text-base">${member.points}</td>
+                    <td class="p-3 text-center text-slate-300">${member.attendedHunts} <span class="text-xs text-slate-500">(${member.lastAttended})</span></td>
+                    <td class="p-3 text-center text-slate-300">${percentage}%</td>
+                    <td class="p-3 text-center font-bold text-emerald-400">${member.dxClaimed}</td>
+                    <td class="p-3 text-right">
+                        <div class="flex items-center justify-end gap-2">
+                            ${canClaimDX ? `
+                                <button onclick="claimDX('${escapeHtml(member.name).replace(/'/g, "\\'")}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-2.5 py-1 rounded font-bold transition shadow" title="Subtract 70 points and claim DX">
+                                    Claim DX
+                                </button>
+                            ` : ''}
+                            <button onclick="openEditMemberModal('${escapeHtml(member.name).replace(/'/g, "\\'")}')" class="text-slate-400 hover:text-slate-200 p-1.5" title="Edit Name"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteMember('${escapeHtml(member.name).replace(/'/g, "\\'")}')" class="text-red-400 hover:text-red-300 p-1.5" title="Delete Member"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function claimDX(memberName) {
+            if (confirm(`Confirm DX Claim for ${memberName}? This will deduct 70 points and record 1 DX claimed.`)) {
+                if (!db.dxClaimedRecords) db.dxClaimedRecords = {};
+                db.dxClaimedRecords[memberName] = (db.dxClaimedRecords[memberName] || 0) + 1;
+                saveData();
+                alert(`Successfully claimed DX for ${memberName}! 70 points deducted.`);
+            }
+        }
+
+        // --- MEMBER MODAL MANAGEMENT ---
+        function openAddMemberModal() {
+            document.getElementById('memberModalTitle').textContent = "Add New Guild Member";
+            document.getElementById('modalMemberName').value = "";
+            document.getElementById('editOriginalName').value = "";
+            document.getElementById('memberModal').classList.remove('hidden');
+            document.getElementById('memberModal').classList.add('flex');
+            document.getElementById('modalMemberName').focus();
+        }
+
+        function openEditMemberModal(name) {
+            document.getElementById('memberModalTitle').textContent = "Edit Guild Member Name";
+            document.getElementById('modalMemberName').value = name;
+            document.getElementById('editOriginalName').value = name;
+            document.getElementById('memberModal').classList.remove('hidden');
+            document.getElementById('memberModal').classList.add('flex');
+            document.getElementById('modalMemberName').focus();
+        }
+
+        function closeMemberModal() {
+            document.getElementById('memberModal').classList.remove('flex');
+            document.getElementById('memberModal').classList.add('hidden');
+        }
+
+        function saveMember() {
+            const nameInput = document.getElementById('modalMemberName');
+            const originalName = document.getElementById('editOriginalName').value;
+            const newName = nameInput.value.trim();
+
+            if (!newName) {
+                alert('Please enter a valid member name.');
+                return;
+            }
+
+            if (originalName === "") {
+                // Adding new
+                if (db.members.includes(newName)) {
+                    alert('Guild member already exists!');
+                    return;
+                }
+                db.members.push(newName);
+            } else {
+                // Editing existing
+                if (originalName !== newName && db.members.includes(newName)) {
+                    alert('Another member with this name already exists!');
+                    return;
+                }
+                const idx = db.members.indexOf(originalName);
+                if (idx !== -1) {
+                    db.members[idx] = newName;
+                }
+                // Update past hunts attendee records as well
+                db.hunts.forEach(h => {
+                    const aIdx = h.attendees.indexOf(originalName);
+                    if (aIdx !== -1) {
+                        h.attendees[aIdx] = newName;
+                    }
+                    h.loots.forEach(l => {
+                        if (l.looter === originalName) l.looter = newName;
+                    });
+                });
+                // Update dxClaimedRecords key
+                if (db.dxClaimedRecords && db.dxClaimedRecords[originalName] !== undefined) {
+                    db.dxClaimedRecords[newName] = db.dxClaimedRecords[originalName];
+                    delete db.dxClaimedRecords[originalName];
+                }
+            }
+
+            saveData();
+            closeMemberModal();
+        }
+
+        function deleteMember(name) {
+            if (confirm(`Are you sure you want to remove ${name} from the guild roster?`)) {
+                db.members = db.members.filter(m => m !== name);
+                saveData();
+            }
+        }
+
+        // --- HISTORY & RETROACTIVE EDITING ---
+        function renderHistory() {
+            const container = document.getElementById('historyContainer');
+            const search = document.getElementById('historySearch').value.toLowerCase();
+            container.innerHTML = '';
+
+            const filteredHunts = db.hunts.slice().reverse().filter(h => 
+                h.number.toLowerCase().includes(search) || h.boss.toLowerCase().includes(search)
+            );
+
+            if (filteredHunts.length === 0) {
+                container.innerHTML = `<div class="text-center py-8 text-slate-500 bg-darkBg/40 rounded-xl border border-borderCol">No boss hunt history recorded yet.</div>`;
+                return;
+            }
+
+            filteredHunts.forEach(hunt => {
+                const card = document.createElement('div');
+                card.className = "bg-darkBg/80 border border-borderCol rounded-xl p-5 shadow-md space-y-4";
+                
+                // Loot list HTML
+                let lootsHTML = '<div class="text-xs text-slate-400 italic">No loots recorded for this hunt.</div>';
+                if (hunt.loots && hunt.loots.length > 0) {
+                    lootsHTML = '<div class="space-y-2">';
+                    hunt.loots.forEach((loot, lIndex) => {
+                        lootsHTML += `
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center bg-cardBg px-3 py-2 rounded-lg border border-borderCol gap-2">
+                                <div class="text-xs font-medium text-slate-200">
+                                    <span class="text-amber-400 font-bold">${loot.quantity}x</span> ${escapeHtml(loot.item)} 
+                                    <span class="text-slate-400">(Looted by: <strong class="text-slate-200">${escapeHtml(loot.looter)}</strong>)</span>
+                                </div>
+                                <div class="flex items-center gap-3">
+                                    <label class="flex items-center gap-1.5 text-xs cursor-pointer">
+                                        <input type="checkbox" ${loot.collected ? 'checked' : ''} onchange="toggleLootCollected('${hunt.id}', ${lIndex})" class="rounded bg-darkBg border-borderCol text-emerald-500">
+                                        <span class="${loot.collected ? 'text-emerald-400 font-bold' : 'text-slate-400'}">Guild Leader Collected</span>
+                                    </label>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    lootsHTML += '</div>';
+                }
+
+                card.innerHTML = `
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center border-b border-borderCol pb-3 gap-2">
+                        <div>
+                            <span class="text-amber-400 font-extrabold text-base">${escapeHtml(hunt.number)}</span>
+                            <span class="text-slate-300 font-semibold ml-2">• Boss: ${escapeHtml(hunt.boss)}</span>
+                            <span class="text-slate-500 text-xs ml-3">(${hunt.date})</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="openEditHuntModal('${hunt.id}')" class="bg-indigo-600/80 hover:bg-indigo-600 text-white text-xs px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1.5">
+                                <i class="fa-solid fa-pen-to-square"></i> Edit Hunt / Retroactive Tally
+                            </button>
+                            <button onclick="deleteHunt('${hunt.id}')" class="text-red-400 hover:text-red-300 p-1.5 text-xs" title="Delete Hunt"><i class="fa-solid fa-trash-can"></i></button>
+                        </div>
+                    </div>
+                    <div>
+                        <h4 class="text-xs uppercase font-extrabold text-slate-400 mb-2">Attendees (${hunt.attendees.length}):</h4>
+                        <div class="flex flex-wrap gap-1.5">
+                            ${hunt.attendees.map(a => `<span class="bg-cardBg border border-borderCol px-2.5 py-1 rounded-md text-xs text-slate-200">${escapeHtml(a)}</span>`).join('')}
+                            ${hunt.attendees.length === 0 ? '<span class="text-xs text-slate-500 italic">Nobody ticked</span>' : ''}
+                        </div>
+                    </div>
+                    <div class="border-t border-borderCol pt-3">
+                        <h4 class="text-xs uppercase font-extrabold text-slate-400 mb-2">Loot Drop Vault Records:</h4>
+                        ${lootsHTML}
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function toggleLootCollected(huntId, lootIndex) {
+            const hunt = db.hunts.find(h => h.id === huntId);
+            if (hunt && hunt.loots[lootIndex]) {
+                hunt.loots[lootIndex].collected = !hunt.loots[lootIndex].collected;
+                saveData();
+            }
+        }
+
+        function deleteHunt(huntId) {
+            if (confirm('Are you sure you want to delete this boss hunt record? Points will be recalculated.')) {
+                db.hunts = db.hunts.filter(h => h.id !== huntId);
+                saveData();
+            }
+        }
+
+        // --- RETROACTIVE HUNT EDIT MODAL ---
+        function openEditHuntModal(huntId) {
+            const hunt = db.hunts.find(h => h.id === huntId);
+            if (!hunt) return;
+
+            document.getElementById('editingHuntId').value = hunt.id;
+            document.getElementById('editHuntSubTitle').textContent = `Editing attendees for ${hunt.number} (${hunt.boss})`;
+
+            const container = document.getElementById('editHuntCheckboxes');
+            container.innerHTML = '';
+
+            db.members.forEach(member => {
+                const isChecked = hunt.attendees.includes(member);
+                const label = document.createElement('label');
+                label.className = "flex items-center gap-2 bg-darkBg p-2 rounded-lg border border-borderCol cursor-pointer transition text-xs font-medium text-slate-200";
+                label.innerHTML = `
+                    <input type="checkbox" name="editHuntMember" value="${escapeHtml(member)}" ${isChecked ? 'checked' : ''} class="w-4 h-4 rounded bg-darkBg border-borderCol text-amber-500">
+                    <span class="truncate">${escapeHtml(member)}</span>
+                `;
+                container.appendChild(label);
+            });
+
+            document.getElementById('editHuntModal').classList.remove('hidden');
+            document.getElementById('editHuntModal').classList.add('flex');
+        }
+
+        function closeEditHuntModal() {
+            document.getElementById('editHuntModal').classList.remove('flex');
+            document.getElementById('editHuntModal').classList.add('hidden');
+        }
+
+        function saveRetroactiveHunt() {
+            const huntId = document.getElementById('editingHuntId').value;
+            const hunt = db.hunts.find(h => h.id === huntId);
+            if (!hunt) return;
+
+            const updatedAttendees = [];
+            document.querySelectorAll('input[name="editHuntMember"]:checked').forEach(cb => {
+                updatedAttendees.push(cb.value);
+            });
+
+            hunt.attendees = updatedAttendees;
+            saveData();
+            closeEditHuntModal();
+            alert(`Hunt ${hunt.number} attendance updated successfully!`);
+        }
+
+        // --- DISCORD EXPORT FORMATTER ---
+        function copyMasterlistDiscord() {
+            const stats = getMemberStats();
+            stats.sort((a, b) => b.points - a.points || b.attendedHunts - a.attendedHunts);
+
+            let text = "🛡️ **VANGUARD RAID LEDGER - MASTER ATTENDANCE** 🛡️\n";
+            text += `Total Boss Hunts Conducted: ${db.hunts.length}\n`;
+            text += "```markdown\n";
+            text += "Rank | Member Name       | Points | Hunts | Attendance | DX Claimed\n";
+            text += "---------------------------------------------------------------\n";
+            
+            stats.forEach((m, i) => {
+                const rank = `#${i + 1}`.padEnd(4);
+                const name = m.name.padEnd(17);
+                const pts = String(m.points).padEnd(6);
+                const hunts = String(m.attendedHunts).padEnd(5);
+                const pct = (db.hunts.length > 0 ? ((m.attendedHunts / db.hunts.length)*100).toFixed(1) : '0.0') + '%';
+                const dx = String(m.dxClaimed);
+                text += `${rank} | ${name} | ${pts} | ${hunts} | ${pct.padEnd(10)} | ${dx}\n`;
+            });
+            text += "```";
+
+            navigator.clipboard.writeText(text).then(() => {
+                alert('Masterlist copied to clipboard formatted for Discord!');
+            }).catch(err => {
+                console.error('Failed to copy text: ', err);
+            });
+        }
+
+        // --- EXPORT & IMPORT JSON ---
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(db, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `vanguard_raid_ledger_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+        }
+
+        function importJSON(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = event => {
+                    try {
+                        const parsed = JSON.parse(event.target.result);
+                        if (parsed.members && parsed.hunts) {
+                            db = parsed;
+                            if (!db.bosses) db.bosses = ["Angul General", "Angul Shogun"];
+                            saveData();
+                            alert('Guild ledger imported successfully!');
+                        } else {
+                            alert('Invalid JSON structure for Guild Ledger.');
+                        }
+                    } catch (e) {
+                        alert('Error parsing JSON file.');
+                        console.error(e);
+                    }
+                };
+            }
+        }
+
+        function resetAllData() {
+            if (confirm('WARNING: This will wipe all guild members, boss list, attendance records, and loot history! Are you sure?')) {
+                localStorage.removeItem('vanguard_raid_ledger_db');
+                location.reload();
+            }
         }
 
         function escapeHtml(str) {
-            if (!str) return '';
-            return String(str)
-                .replace(/&/g, '&amp;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#039;');
+            return str.replace(/&/g, "&").replace(/</g, "<").replace(/>/g, ">").replace(/"/g, """).replace(/'/g, "'");
         }
 
-        window.addEventListener('DOMContentLoaded', initApp);
+        // Initial load on page start
+        window.onload = loadData;
     </script>
 </body>
 </html>
